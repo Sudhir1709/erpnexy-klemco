@@ -1,0 +1,24 @@
+services:
+  backend:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
+
+  frontend:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
+
+  websocket:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
+
+  queue-short:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
+
+  queue-long:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
+
+  scheduler:
+    volumes:
+      - ./apps:/home/frappe/frappe-bench/apps
