@@ -1,0 +1,31 @@
+name: Klemco ERPNext Setup Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required Klemco files exist
+        run: |
+          echo "Validating Klemco setup files..."
+          for f in klemco_seed2.py klemco_users.py klemco_workspace_roles.py klemco_user_guides.py KLEMCO_SETUP.md; do
+            if [ -f "$f" ]; then
+              echo "✓ $f"
+            else
+              echo "✗ $f MISSING" && exit 1
+            fi
+          done
+          echo "All files present!"
+
+      - name: Lint Python seed scripts
+        run: |
+          pip install pyflakes -q
+          pyflakes klemco_seed2.py klemco_users.py klemco_workspace_roles.py klemco_user_guides.py || true
+          echo "Lint complete"
