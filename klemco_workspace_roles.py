@@ -21,6 +21,7 @@ workspace_roles = {
     'Quality':           ['Quality Manager', 'Quality User'],
     'Support':           ['Sales Manager', 'Sales User'],
     'Website':           ['Website Manager', 'Marketing Manager'],
+    'GST India':         ['Accounts Manager', 'Accounts User', 'System Manager'],
     'ERPNext Settings':  ['System Manager'],
     'Integrations':      ['System Manager'],
     'Build':             ['System Manager'],

@@ -1,24 +1,23 @@
-x-ic-install: &ic_install
-  entrypoint:
-    - bash
-    - -c
-    - |
-      source /home/frappe/frappe-bench/env/bin/activate
-      if ! python -c "import india_compliance" 2>/dev/null; then
-        echo "[init] Installing india_compliance..."
-        bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16 --skip-assets 2>/dev/null || true
-      fi
-
 services:
   backend:
-    <<: *ic_install
     entrypoint:
       - bash
       - -c
       - |
         source /home/frappe/frappe-bench/env/bin/activate
         python -c "import india_compliance" 2>/dev/null || \
-          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16 --skip-assets
+          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16-hotfix --skip-assets
+        python -c "import hrms" 2>/dev/null || \
+          bench get-app hrms https://github.com/frappe/hrms --branch version-16 --skip-assets
+        python -c "import crm" 2>/dev/null || \
+          bench get-app crm https://github.com/frappe/crm --branch main --skip-assets
+        for APP in india_compliance hrms crm; do
+          SRC=/home/frappe/frappe-bench/apps/$APP/$APP/public
+          DEST=/home/frappe/frappe-bench/sites/assets/$APP
+          if [ -d "$SRC" ] && [ ! -f "$DEST/assets_copied" ]; then
+            rm -rf $DEST && cp -r $SRC $DEST && touch $DEST/assets_copied
+          fi
+        done
         exec /home/frappe/frappe-bench/env/bin/gunicorn \
           --chdir=/home/frappe/frappe-bench/sites \
           --bind=0.0.0.0:8000 --threads=4 --workers=2 \
@@ -32,7 +31,11 @@ services:
       - |
         source /home/frappe/frappe-bench/env/bin/activate
         python -c "import india_compliance" 2>/dev/null || \
-          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16 --skip-assets
+          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16-hotfix --skip-assets
+        python -c "import hrms" 2>/dev/null || \
+          bench get-app hrms https://github.com/frappe/hrms --branch version-16 --skip-assets
+        python -c "import crm" 2>/dev/null || \
+          bench get-app crm https://github.com/frappe/crm --branch main --skip-assets
         exec bench worker --queue short,default
 
   queue-long:
@@ -42,7 +45,11 @@ services:
       - |
         source /home/frappe/frappe-bench/env/bin/activate
         python -c "import india_compliance" 2>/dev/null || \
-          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16 --skip-assets
+          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16-hotfix --skip-assets
+        python -c "import hrms" 2>/dev/null || \
+          bench get-app hrms https://github.com/frappe/hrms --branch version-16 --skip-assets
+        python -c "import crm" 2>/dev/null || \
+          bench get-app crm https://github.com/frappe/crm --branch main --skip-assets
         exec bench worker --queue long,default,short
 
   scheduler:
@@ -52,7 +59,11 @@ services:
       - |
         source /home/frappe/frappe-bench/env/bin/activate
         python -c "import india_compliance" 2>/dev/null || \
-          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16 --skip-assets
+          bench get-app india_compliance https://github.com/resilient-tech/india-compliance --branch version-16-hotfix --skip-assets
+        python -c "import hrms" 2>/dev/null || \
+          bench get-app hrms https://github.com/frappe/hrms --branch version-16 --skip-assets
+        python -c "import crm" 2>/dev/null || \
+          bench get-app crm https://github.com/frappe/crm --branch main --skip-assets
         exec bench schedule
 
   websocket:
