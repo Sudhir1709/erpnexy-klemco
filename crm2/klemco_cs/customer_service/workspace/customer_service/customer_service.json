@@ -1,0 +1,20 @@
+{
+ "app": "klemco_cs",
+ "content": "[{\"id\":\"cs1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Customer Service</b></span>\",\"col\":12}},{\"id\":\"cs2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"CS Complaint\",\"col\":3}},{\"id\":\"cs3\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+ "doctype": "Workspace",
+ "is_hidden": 0,
+ "label": "Customer Service",
+ "links": [
+  {"label":"Complaints","link_count":4,"link_type":"DocType","onboard":1,"type":"Card Break"},
+  {"label":"All Complaints","link_to":"CS Complaint","link_type":"DocType","onboard":1,"type":"Link"},
+  {"label":"Open Complaints","link_to":"CS Complaint","link_type":"DocType","type":"Link"},
+  {"label":"Escalated","link_to":"CS Complaint","link_type":"DocType","type":"Link"},
+  {"label":"Category Mapping","link_to":"CS Complaint Category Map","link_type":"DocType","type":"Link"}
+ ],
+ "module": "Customer Service",
+ "name": "Customer Service",
+ "public": 1,
+ "roles": [{"role":"CS Executive"},{"role":"CS Manager"},{"role":"CS Supervisor"},{"role":"System Manager"}],
+ "title": "Customer Service",
+ "type": "Workspace"
+}
