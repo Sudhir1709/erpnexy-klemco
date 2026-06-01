@@ -2,3 +2,13 @@ README.md
 LICENSE
 .gitignore
 compose*.yaml
+.git
+docs
+images
+development
+devcontainer-example
+node_modules
+overrides
+tests
+**/__pycache__
+**/*.egg-info

@@ -18,21 +18,32 @@ cp example.env .env
 # FRAPPE_SITE_NAME_HEADER=mysite.localhost
 ```
 
-### 3. Start the Stack
+### 3. Build the Klemco CS image
+The `klemco_cs` Customer Service app is baked into a custom image:
+```bash
+docker build -f Dockerfile.klemco --build-arg ERPNEXT_VERSION=v16.14.0 -t erpnxt-klemco-cs:v16.14.0 .
+```
+Then set these in `.env` so the stack uses it:
+```
+CUSTOM_IMAGE=erpnxt-klemco-cs
+CUSTOM_TAG=v16.14.0
+```
+
+### 4. Start the Stack
 ```bash
 docker compose -f compose.yaml -f overrides/compose.mariadb.yaml -f overrides/compose.redis.yaml -f overrides/compose.noproxy.yaml -f overrides/compose.klemco.yaml --env-file .env up -d
 ```
-The `compose.klemco.yaml` override bind-mounts the `klemco_cs` Customer Service app
-(`./crm2/klemco_cs`) into the Python services and, on backend startup, installs it on
-the site (first run) or runs `bench migrate` (subsequent runs) — so the CS Module v1.3
-customizations (Custom Fields, KM Order doctype, Delivery Challan print format, roles)
-are (re)applied automatically. See [CS Module](#cs-module-customer-service) below.
+The `compose.klemco.yaml` override adjusts the backend startup to (1) self-heal the
+site DB-user host grant (`klemco_db_grant.py` — resilient to container-IP churn) and
+(2) run `bench migrate`, so the CS Module v1.3 customizations (Custom Fields, KM Order
+doctype, Delivery Challan print format, roles) are (re)applied automatically. The app
+itself ships in the image. See [CS Module](#cs-module-customer-service) below.
 
-> If you recreate **only** the backend (e.g. after editing the override), restart the
-> frontend too so nginx re-resolves the backend container IP:
+> If you ever recreate **only** the backend, restart the frontend so nginx re-resolves
+> the backend container IP:
 > `docker restart erpnxt_klemco-frontend-1 erpnxt_klemco-websocket-1`
 
-### 4. Create Site
+### 5. Create Site
 ```bash
 docker exec frappe_docker-backend-1 bench new-site mysite.localhost \
   --mariadb-root-password your_password \
@@ -41,7 +52,7 @@ docker exec frappe_docker-backend-1 bench new-site mysite.localhost \
 docker exec frappe_docker-backend-1 bench use mysite.localhost
 ```
 
-### 5. Seed Klemco Demo Data
+### 6. Seed Klemco Demo Data
 ```bash
 docker cp klemco_seed2.py frappe_docker-backend-1:/home/frappe/frappe-bench/
 docker exec frappe_docker-backend-1 bash -c \
@@ -50,28 +61,28 @@ docker exec frappe_docker-backend-1 bash -c \
    python klemco_seed2.py"
 ```
 
-### 6. Create Department Users
+### 7. Create Department Users
 ```bash
 docker cp klemco_users.py frappe_docker-backend-1:/home/frappe/frappe-bench/
 docker exec frappe_docker-backend-1 bash -c \
   "cd /home/frappe/frappe-bench && source env/bin/activate && python klemco_users.py"
 ```
 
-### 7. Apply Workspace Role Restrictions
+### 8. Apply Workspace Role Restrictions
 ```bash
 docker cp klemco_workspace_roles.py frappe_docker-backend-1:/home/frappe/frappe-bench/
 docker exec frappe_docker-backend-1 bash -c \
   "cd /home/frappe/frappe-bench && source env/bin/activate && python klemco_workspace_roles.py"
 ```
 
-### 8. Add Department User Guides
+### 9. Add Department User Guides
 ```bash
 docker cp klemco_user_guides.py frappe_docker-backend-1:/home/frappe/frappe-bench/
 docker exec frappe_docker-backend-1 bash -c \
   "cd /home/frappe/frappe-bench && source env/bin/activate && python klemco_user_guides.py"
 ```
 
-### 9. Clear Cache
+### 10. Clear Cache
 ```bash
 docker exec frappe_docker-backend-1 bench --site mysite.localhost clear-cache
 docker exec frappe_docker-redis-cache-1 redis-cli FLUSHALL
@@ -109,7 +120,9 @@ All department users use password: `Klemco@2024`
 ## CS Module (Customer Service)
 
 The custom `klemco_cs` app (`crm2/klemco_cs`) implements the CRM Customer Service module.
-It is mounted and auto-migrated via `overrides/compose.klemco.yaml` (see step 3).
+It is baked into the custom image (`Dockerfile.klemco`, step 3); `overrides/compose.klemco.yaml`
+runs the DB self-heal grant + `bench migrate` on backend startup (step 4) so customizations
+stay applied across restarts and recreations.
 
 **v1.3 — wireframe/BRD review feedback (CR-09…CR-18):**
 
@@ -129,8 +142,8 @@ It is mounted and auto-migrated via `overrides/compose.klemco.yaml` (see step 3)
 Roles auto-created on install/migrate: `CS Executive`, `CS Manager`, `CS Supervisor`,
 `Sales Head`, `KM Plant Head`, `Supply Chain Lead`.
 
-> For a fully image-based deployment, bake `klemco_cs` into a `CUSTOM_IMAGE` and drop
-> the `compose.klemco.yaml` override.
+> For local app development you can instead bind-mount `./crm2/klemco_cs` over
+> `apps/klemco_cs` and `pip install -e` it, skipping an image rebuild on each change.
 
 ## ngrok (External Access)
 ```bash
