@@ -18,15 +18,20 @@ cp example.env .env
 # FRAPPE_SITE_NAME_HEADER=mysite.localhost
 ```
 
-### 3. Build the Klemco CS image
-The `klemco_cs` Customer Service app is baked into a custom image:
-```bash
-docker build -f Dockerfile.klemco --build-arg ERPNEXT_VERSION=v16.14.0 -t erpnxt-klemco-cs:v16.14.0 .
+### 3. Get the Klemco CS image
+The `klemco_cs` Customer Service app is baked into a custom image, published to GHCR.
+Set these in `.env` so the stack uses it:
 ```
-Then set these in `.env` so the stack uses it:
-```
-CUSTOM_IMAGE=erpnxt-klemco-cs
+CUSTOM_IMAGE=ghcr.io/sudhir1709/erpnxt-klemco-cs
 CUSTOM_TAG=v16.14.0
+```
+The image is pulled automatically on `up`. If the GHCR package is **private**, log in first:
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin   # token needs read:packages
+```
+Or **build it locally** instead of pulling:
+```bash
+docker build -f Dockerfile.klemco --build-arg ERPNEXT_VERSION=v16.14.0 -t ghcr.io/sudhir1709/erpnxt-klemco-cs:v16.14.0 .
 ```
 
 ### 4. Start the Stack
