@@ -72,9 +72,15 @@ CUSTOM_FIELDS = {
             "label": "3PL — Specify / Note",
             "fieldtype": "Small Text",
             "insert_after": "custom_preferred_3pl",
-            "depends_on": "eval:doc.custom_preferred_3pl=='Others (not yet decided)'",
-            "mandatory_depends_on": "eval:doc.custom_preferred_3pl=='Others (not yet decided)'",
-            "description": "Required when 3PL is not yet finalised; partner is confirmed at dispatch.",
+            # No declarative depends_on/mandatory_depends_on: a parenthesised string literal
+            # ("Others (not yet decided)") breaks Frappe's client-side depends_on evaluator
+            # ("Invalid depends_on expression"). The "required when Others" rule is enforced by
+            # the client script (sales_order.js toggles reqd) AND server validation
+            # (events/sales_order._validate_3pl).
+            "depends_on": "",
+            "mandatory_depends_on": "",
+            "description": "Specify the logistics partner when 3PL is 'Others (not yet decided)'; "
+                           "confirmed at dispatch.",
         },
         {
             "fieldname": "custom_delivery_instructions",

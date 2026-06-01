@@ -26,6 +26,8 @@ doctype_js = {
     'Delivery Note': 'public/js/delivery_note.js',
     'Sales Invoice': 'public/js/sales_invoice.js',
     'Item': 'public/js/item.js',
+    'CS Complaint': 'public/js/cs_complaint.js',
+    'KM Order': 'public/js/km_order.js',
 }
 
 # Server-side validation / automation for the v1.3 feedback items.
