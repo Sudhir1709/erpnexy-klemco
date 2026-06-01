@@ -7,6 +7,7 @@
 frappe.ui.form.on('Sales Order', {
     refresh(frm) {
         _bound_delivery_dates(frm);
+        _toggle_3pl_note(frm);
         _deviation_ui(frm);
 
         // CR-11: raise a KM Order after reviewing this SO (submitted orders only).
@@ -22,14 +23,11 @@ frappe.ui.form.on('Sales Order', {
 
     onload(frm) {
         _bound_delivery_dates(frm);
+        _toggle_3pl_note(frm);
     },
 
     custom_preferred_3pl(frm) {
-        if (frm.doc.custom_preferred_3pl === 'Others (not yet decided)') {
-            frm.set_df_property('custom_3pl_note', 'reqd', 1);
-        } else {
-            frm.set_df_property('custom_3pl_note', 'reqd', 0);
-        }
+        _toggle_3pl_note(frm);
     },
 
     validate(frm) {
@@ -42,6 +40,14 @@ frappe.ui.form.on('Sales Order Item', {
         _bound_delivery_dates(frm);
     },
 });
+
+// CR-14 — show + require the 3PL note only when "Others (not yet decided)" is chosen.
+// (Done in JS instead of a declarative depends_on, which can't safely hold the parenthesised value.)
+function _toggle_3pl_note(frm) {
+    const others = frm.doc.custom_preferred_3pl === 'Others (not yet decided)';
+    frm.set_df_property('custom_3pl_note', 'reqd', others ? 1 : 0);
+    frm.set_df_property('custom_3pl_note', 'hidden', others ? 0 : 1);
+}
 
 // CR-09 — bound both the header and the per-line Required Delivery Date pickers to today.
 function _bound_delivery_dates(frm) {
