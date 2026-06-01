@@ -1,0 +1,19 @@
+# Custom ERPNext image with the Klemco CS module (klemco_cs) baked in.
+# Build:
+#   docker build -f Dockerfile.klemco --build-arg ERPNEXT_VERSION=v16.14.0 \
+#     -t erpnxt-klemco-cs:v16.14.0 .
+# Then set CUSTOM_IMAGE=erpnxt-klemco-cs and CUSTOM_TAG=v16.14.0 in .env and
+# `docker compose ... up -d` (see KLEMCO_SETUP.md).
+#
+# klemco_cs ships only server code + doctype_js form scripts (served directly),
+# so no `bench build` asset step is required.
+ARG ERPNEXT_VERSION=v16.14.0
+FROM frappe/erpnext:${ERPNEXT_VERSION}
+
+USER root
+COPY --chown=frappe:frappe crm2/klemco_cs /home/frappe/frappe-bench/apps/klemco_cs
+COPY --chown=frappe:frappe resources/klemco_db_grant.py /home/frappe/frappe-bench/klemco_db_grant.py
+
+USER frappe
+RUN cd /home/frappe/frappe-bench \
+ && ./env/bin/pip install --no-cache-dir -e apps/klemco_cs
