@@ -39,10 +39,12 @@ docker build -f Dockerfile.klemco --build-arg ERPNEXT_VERSION=v16.14.0 -t ghcr.i
 docker compose -f compose.yaml -f overrides/compose.mariadb.yaml -f overrides/compose.redis.yaml -f overrides/compose.noproxy.yaml -f overrides/compose.klemco.yaml --env-file .env up -d
 ```
 The `compose.klemco.yaml` override adjusts the backend startup to (1) self-heal the
-site DB-user host grant (`klemco_db_grant.py` — resilient to container-IP churn) and
-(2) run `bench migrate`, so the CS Module v1.3 customizations (Custom Fields, KM Order
-doctype, Delivery Challan print format, roles) are (re)applied automatically. The app
-itself ships in the image. See [CS Module](#cs-module-customer-service) below.
+site DB-user host grant (`klemco_db_grant.py` — resilient to container-IP churn),
+(2) enable Server Scripts (`server_script_enabled` — otherwise the `CS SO Discount Check`
+server script blocks all Sales Order saves), and (3) run `bench migrate`, so the CS Module
+v1.3 customizations (Custom Fields, KM Order doctype, Delivery Challan print format, roles)
+are (re)applied automatically. The app itself ships in the image.
+See [CS Module](#cs-module-customer-service) below.
 
 > If you ever recreate **only** the backend, restart the frontend so nginx re-resolves
 > the backend container IP:
