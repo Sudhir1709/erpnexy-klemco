@@ -71,7 +71,7 @@ docker exec frappe_docker-redis-cache-1 redis-cli FLUSHALL
 ---
 
 ## Access
-- **Local:** http://localhost:8080
+- **Local:** http://localhost:8081
 - **Admin login:** `Administrator` / `admin`
 
 ## Department Credentials
@@ -100,7 +100,7 @@ All department users use password: `Klemco@2024`
 ## ngrok (External Access)
 ```bash
 ngrok config add-authtoken YOUR_TOKEN
-ngrok http 8080
+ngrok http 8081
 ```
 To run permanently, register as Windows scheduled task:
 ```powershell
