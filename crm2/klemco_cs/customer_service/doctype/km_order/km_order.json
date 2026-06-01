@@ -1,0 +1,96 @@
+{
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "Customer Service",
+ "name": "KM Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "autoname": "naming_series:",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "title_field": "customer",
+ "creation": "2026-05-01 00:00:00",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Series",
+   "label": "Series",
+   "options": "KMPO-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "linked_sales_order",
+   "fieldtype": "Link",
+   "label": "Linked Sales Order",
+   "options": "Sales Order",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "BR-KM-01: KM orders must be linked to a parent customer Sales Order."
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "col_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nKM Confirmed\nIn Production\nInward Complete\nTransfer Billing Done\nCancelled",
+   "default": "Draft",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "km_tat_date",
+   "fieldtype": "Date",
+   "label": "KM TAT Date",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "transfer_billing_status",
+   "fieldtype": "Select",
+   "label": "Transfer Billing",
+   "options": "\nPending Inward\nNot Yet\nTB Done"
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items (reviewed against SO)"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "KM Order Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "KM Order",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {"role": "CS Executive", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1},
+  {"role": "CS Supervisor", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1},
+  {"role": "CS Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "delete": 1, "print": 1},
+  {"role": "KM Plant Head", "read": 1, "write": 1},
+  {"role": "Supply Chain Lead", "read": 1},
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "delete": 1, "print": 1}
+ ]
+}
