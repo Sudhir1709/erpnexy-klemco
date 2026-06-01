@@ -1,27 +1,20 @@
-import frappe
+from setuptools import setup, find_packages
 
-# Roles used across the CS CRM. CS Supervisor/Executive/Manager existed in v1.0; the
-# v1.3 approval flows add Sales Head (RC deviation), KM Plant Head + Supply Chain Lead
-# (KM item triple approval, BR-KM-02 / CR-18).
-ROLES = [
-    'CS Executive',
-    'CS Manager',
-    'CS Supervisor',
-    'Sales Head',
-    'KM Plant Head',
-    'Supply Chain Lead',
-]
+with open("klemco_cs/__init__.py") as f:
+    for line in f:
+        if line.startswith("__version__"):
+            version = line.split("=")[1].strip().strip('"').strip("'")
+            break
+    else:
+        version = "1.3.0"
 
-
-def after_install():
-    create_roles()
-    from klemco_cs.customizations import apply_customizations
-    apply_customizations()
-    frappe.db.commit()
-
-
-def create_roles():
-    for role in ROLES:
-        if not frappe.db.exists('Role', role):
-            frappe.get_doc({'doctype': 'Role', 'role_name': role}).insert(ignore_permissions=True)
-            print(f'  Created role: {role}')
+setup(
+    name="klemco_cs",
+    version=version,
+    description="Klemco Customer Service Module",
+    author="Klemco India",
+    packages=find_packages(),
+    zip_safe=False,
+    include_package_data=True,
+    install_requires=["frappe"],
+)
