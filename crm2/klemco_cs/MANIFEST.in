@@ -1,0 +1,2 @@
+include klemco_cs/modules.txt
+recursive-include klemco_cs *.json *.js *.css *.html *.py

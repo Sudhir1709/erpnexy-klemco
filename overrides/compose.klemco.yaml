@@ -1,0 +1,85 @@
+# Klemco CS — make the custom app available to the demo stack and (re)apply its
+# customizations automatically on startup, WITHOUT baking a custom image.
+#
+# Bind-mounts ./crm2/klemco_cs into each Python service and, on boot:
+#   - pip-installs the app (editable) so it is importable in that container
+#   - the BACKEND additionally installs it on the site (first run) or runs
+#     `bench migrate` (subsequent runs), which (re)applies the v1.3 Custom Fields,
+#     KM Order doctype, Delivery Challan print format, and roles via the
+#     after_install / after_migrate hooks. Workers/scheduler only pip-install
+#     (no migrate) to avoid concurrent-migration races.
+#
+# Append AFTER the other overrides, e.g.:
+#   docker compose -f compose.yaml \
+#     -f overrides/compose.mariadb.yaml -f overrides/compose.redis.yaml \
+#     -f overrides/compose.noproxy.yaml -f overrides/compose.klemco.yaml \
+#     --env-file .env up -d
+#
+# NOTE: the editable install writes klemco_cs/klemco_cs.egg-info into the mounted
+# host dir (git-ignored). For a fully baked, image-based deployment instead, build a
+# CUSTOM_IMAGE that includes klemco_cs and drop this override.
+
+services:
+  backend:
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - ./crm2/klemco_cs:/home/frappe/frappe-bench/apps/klemco_cs
+    entrypoint:
+      - bash
+      - -c
+      - |
+        source /home/frappe/frappe-bench/env/bin/activate
+        cd /home/frappe/frappe-bench
+        grep -qx klemco_cs sites/apps.txt 2>/dev/null || echo klemco_cs >> sites/apps.txt
+        ./env/bin/pip install -e apps/klemco_cs --quiet || true
+        if bench --site ${FRAPPE_SITE_NAME_HEADER:-mysite.localhost} list-apps 2>/dev/null | grep -qw klemco_cs; then
+          echo "[klemco] klemco_cs present — running migrate to (re)apply CS customizations..."
+          bench --site ${FRAPPE_SITE_NAME_HEADER:-mysite.localhost} migrate || echo "[klemco] migrate failed (continuing)"
+        else
+          echo "[klemco] installing klemco_cs on ${FRAPPE_SITE_NAME_HEADER:-mysite.localhost}..."
+          bench --site ${FRAPPE_SITE_NAME_HEADER:-mysite.localhost} install-app klemco_cs || echo "[klemco] install-app failed (continuing)"
+        fi
+        exec /home/frappe/frappe-bench/env/bin/gunicorn \
+          --chdir=/home/frappe/frappe-bench/sites \
+          --bind=0.0.0.0:8000 --threads=4 --workers=2 \
+          --worker-class=gthread --worker-tmp-dir=/dev/shm \
+          --timeout=120 --preload frappe.app:application
+
+  queue-short:
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - ./crm2/klemco_cs:/home/frappe/frappe-bench/apps/klemco_cs
+    entrypoint:
+      - bash
+      - -c
+      - |
+        source /home/frappe/frappe-bench/env/bin/activate
+        cd /home/frappe/frappe-bench
+        ./env/bin/pip install -e apps/klemco_cs --quiet || true
+        exec bench worker --queue short,default
+
+  queue-long:
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - ./crm2/klemco_cs:/home/frappe/frappe-bench/apps/klemco_cs
+    entrypoint:
+      - bash
+      - -c
+      - |
+        source /home/frappe/frappe-bench/env/bin/activate
+        cd /home/frappe/frappe-bench
+        ./env/bin/pip install -e apps/klemco_cs --quiet || true
+        exec bench worker --queue long,default,short
+
+  scheduler:
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - ./crm2/klemco_cs:/home/frappe/frappe-bench/apps/klemco_cs
+    entrypoint:
+      - bash
+      - -c
+      - |
+        source /home/frappe/frappe-bench/env/bin/activate
+        cd /home/frappe/frappe-bench
+        ./env/bin/pip install -e apps/klemco_cs --quiet || true
+        exec bench schedule

@@ -32,3 +32,7 @@ node_modules
 # VitePress
 **/.vitepress/dist
 **/.vitepress/cache
+
+# klemco_cs editable-install / runtime artifacts (mounted into containers)
+crm2/klemco_cs/klemco_cs.egg-info/
+crm2/klemco_cs/**/__pycache__/
