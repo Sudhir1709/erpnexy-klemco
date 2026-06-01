@@ -29,6 +29,7 @@ frontend image rebuild).
 | 4 — UI / client-script | Playwright render (8/8) + interactive (6/7) + 25-case manual checklist | **14 / 15 automated** |
 | 5 — NFR + security (smoke) | Latency, RBAC at ORM, unauth, audit | **12 / 12** |
 | Outstanding | Load smoke, e-waybill boundary, interactive UI | **PASS** (see §6) |
+| OE native + CRM | Credit-limit hold, FIFO allocation config, Frappe CRM Lead→Deal | **4 / 4** |
 
 **Verdict:** All functional requirements and business-rule gates behave as specified. Submission
 and approval rights are correctly separated per role. Performance and security smoke targets are
@@ -41,10 +42,11 @@ met with margin.
 **In scope:** `klemco_cs` customizations on Sales Order, Delivery Note, Sales Invoice, Item; the
 KM Order doctype; CS Complaint module; cross-document flows (SO→Delivery Challan→Invoice→POD,
 SO→KM Order); business-rule/approval gates; RBAC; notifications; NFR & security smoke; UI render
-and interactive behavior.
+and interactive behavior. **Order Execution native rules** (credit-limit hold, FIFO allocation)
+and a **Frappe CRM** smoke (Lead→Deal) were added in a follow-up round (§5a).
 
 **Out of scope / external:** live third-party integrations (NIC e-waybill, SMS gateway, 3PL
-tracking); full load/scale test; TLS/SSO/MFA infrastructure.
+tracking); full load/scale test; TLS/SSO/MFA infrastructure; the **HRMS** app.
 
 ---
 
@@ -100,6 +102,20 @@ All v1.3 items covered. The notification matrix (§x.8), initially unimplemented
 | Unauthenticated `/api/resource` | denied | 403 |
 | RBAC at ORM (Stock User creates KM Order) | denied | denied |
 | Audit trail on tracked doctype | ≥ 1 version | captured |
+
+---
+
+## 5a. Order Execution Native Rules + CRM Smoke (`oe_crm_runner.py`, 4/4)
+
+| Check | Result |
+|---|---|
+| **Credit-limit hold** (BR-OE-02 / FR-4-02) — over-limit SO blocked; within-limit submits | ✅ |
+| **FIFO allocation** (BR-OE-03 / FR-4-03) — valuation FIFO + pick-by-FIFO + auto serial/batch bundle on outward | ✅ (config-verified) |
+| **Frappe CRM** — create CRM Lead | ✅ |
+| **Frappe CRM** — create CRM Deal (Lead→Deal lifecycle) | ✅ |
+
+> FIFO is confirmed by the active Stock Settings (the dynamic 2-batch pick needs the Serial/Batch
+> feature enabled, which is intentionally off on this stack). HRMS remains out of scope.
 
 ---
 
