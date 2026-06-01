@@ -19,6 +19,7 @@
    "fieldtype": "Series",
    "label": "ID",
    "options": "CMP-.YYYY.-",
+   "default": "CMP-.YYYY.-",
    "reqd": 1
   },
   {

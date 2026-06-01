@@ -17,6 +17,7 @@
    "fieldtype": "Series",
    "label": "Series",
    "options": "KMPO-.YYYY.-",
+   "default": "KMPO-.YYYY.-",
    "reqd": 1
   },
   {
