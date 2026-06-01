@@ -29,6 +29,8 @@ class CSComplaint(Document):
         if self.status == 'Closed' and not self.csat_survey_sent:
             self.db_set('csat_survey_sent', 1)
             frappe.msgprint(f'CSAT survey triggered for {self.name}', alert=True)
+            from klemco_cs.notifications import complaint_closed_csat
+            complaint_closed_csat(self)
 
     def _set_sla(self):
         hours = SLA_HOURS.get(self.priority, 48)
@@ -50,10 +52,18 @@ def escalate_overdue_complaints():
         filters={'status': ['not in', ['Closed', 'Escalated', 'Resolution Sent']]},
         fields=['name', 'sla_hours_total', 'creation']
     )
+    escalated = []
     for c in overdue:
         total_h = c.sla_hours_total or 48
         elapsed_h = (get_datetime() - get_datetime(c.creation)).total_seconds() / 3600
         if elapsed_h / total_h >= 0.8:
             frappe.db.set_value('CS Complaint', c.name, 'status', 'Escalated')
+            escalated.append(c.name)
     if overdue:
         frappe.db.commit()
+    # notify CS Manager(s) of each freshly escalated complaint (FR-8.8)
+    from klemco_cs.notifications import complaint_escalated
+    for name in escalated:
+        cust, ctype = frappe.db.get_value('CS Complaint', name, ['customer', 'complaint_type'])
+        complaint_escalated(name, cust, ctype)
+    return escalated

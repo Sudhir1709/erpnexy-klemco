@@ -37,6 +37,7 @@ doc_events = {
     },
     'Delivery Note': {
         'validate': 'klemco_cs.events.delivery_note.validate',
+        'on_submit': 'klemco_cs.notifications.order_dispatched',
     },
     'Sales Invoice': {
         'validate': 'klemco_cs.events.sales_invoice.validate',
@@ -44,5 +45,8 @@ doc_events = {
     },
     'Item': {
         'validate': 'klemco_cs.events.item.validate',
+    },
+    'CS Complaint': {
+        'after_insert': 'klemco_cs.notifications.complaint_logged',
     },
 }
