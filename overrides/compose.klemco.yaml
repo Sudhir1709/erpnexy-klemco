@@ -1,38 +1,24 @@
-# Klemco CS — startup hooks for the custom image (erpnxt-klemco-cs).
+# Klemco CS — startup hooks for the custom image (CUSTOM_IMAGE=erpnxt-klemco-cs,
+# published to ghcr.io/sudhir1709/erpnxt-klemco-cs).
 #
-# The klemco_cs app is BAKED into the CUSTOM_IMAGE (see Dockerfile.klemco), so no
-# bind-mount or boot-time pip install is needed. This override only adjusts the
-# backend startup to:
+# The klemco_cs app is BAKED into the image (see Dockerfile.klemco), so no bind-mount
+# or boot-time pip install is needed. This override only adjusts the backend startup to:
 #   1. self-heal the site DB user host grant (resilient to container IP churn)
-#   2. run `bench migrate` so the v1.3 customizations (Custom Fields, KM Order
-#      doctype, Delivery Challan print format, roles) are (re)applied automatically
+#   2. run `bench migrate` so the v1.3 customizations (Custom Fields, KM Order doctype,
+#      Delivery Challan print format, roles) are (re)applied automatically
 # ...then exec the normal gunicorn server. Workers/scheduler/configurator use the
 # custom image directly with their default commands.
 #
-# Prereq: build the image and set CUSTOM_IMAGE/CUSTOM_TAG in .env (see KLEMCO_SETUP.md).
+# Prereq: CUSTOM_IMAGE/CUSTOM_TAG set in .env (see KLEMCO_SETUP.md). The image is pulled
+# from GHCR if not present locally — make the package public or `docker login ghcr.io`.
 # Append AFTER the other overrides:
 #   docker compose -f compose.yaml \
 #     -f overrides/compose.mariadb.yaml -f overrides/compose.redis.yaml \
 #     -f overrides/compose.noproxy.yaml -f overrides/compose.klemco.yaml \
 #     --env-file .env up -d
 
-# CUSTOM_IMAGE is built locally (not in a registry), so every service must use the
-# local image without attempting a pull.
 services:
-  configurator:
-    pull_policy: never
-  websocket:
-    pull_policy: never
-  frontend:
-    pull_policy: never
-  queue-short:
-    pull_policy: never
-  queue-long:
-    pull_policy: never
-  scheduler:
-    pull_policy: never
   backend:
-    pull_policy: never
     environment:
       DB_PASSWORD: ${DB_PASSWORD:-123}
     entrypoint:
