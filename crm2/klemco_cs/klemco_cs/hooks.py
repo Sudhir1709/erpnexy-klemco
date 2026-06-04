@@ -8,6 +8,9 @@ app_color = '#1A5276'
 app_email = 'admin@klemcoindia.com'
 app_license = 'MIT'
 
+# Floating AI Help bubble on every desk page (raw asset path — no build step needed).
+app_include_js = ["/assets/klemco_cs/js/ai_widget.js"]
+
 fixtures = [
     {'dt': 'Workspace', 'filters': [['app', '=', 'klemco_cs']]},
     {'dt': 'Role', 'filters': [['name', 'in', [
@@ -18,7 +21,9 @@ fixtures = [
 
 after_install = 'klemco_cs.setup.after_install'
 # Re-apply custom fields / property setters / print format on every migrate (idempotent).
-after_migrate = ['klemco_cs.customizations.apply_customizations']
+after_migrate = ['klemco_cs.customizations.apply_customizations',
+                 'klemco_cs.ai_assistant.api.install_menu',
+                 'klemco_cs.ai_assistant.api.install_crm_spa_widget']
 
 # Form (client) scripts attached to stock doctypes for the v1.3 wireframe changes.
 doctype_js = {
