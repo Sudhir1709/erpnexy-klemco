@@ -18,7 +18,8 @@ fixtures = [
 
 after_install = 'klemco_cs.setup.after_install'
 # Re-apply custom fields / property setters / print format on every migrate (idempotent).
-after_migrate = ['klemco_cs.customizations.apply_customizations']
+after_migrate = ['klemco_cs.customizations.apply_customizations',
+                 'klemco_cs.ai_assistant.api.install_menu']
 
 # Form (client) scripts attached to stock doctypes for the v1.3 wireframe changes.
 doctype_js = {
