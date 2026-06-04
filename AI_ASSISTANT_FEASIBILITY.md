@@ -97,14 +97,24 @@ After the initial PoC, three follow-ups were built and verified against the live
 
 ### 1. Floating chat bubble (every desk page + CRM SPA)
 - `public/js/ai_widget.js` — a self-contained floating "💬" bubble + chat panel, registered desk-wide
-  via `app_include_js = "/assets/klemco_cs/js/ai_widget.js"` (raw path, no build), and injected into
-  the Frappe CRM SPA (`/crm`) via `install_crm_spa_widget()` (re-applied on migrate).
-- ⚠️ **Dev-stack caveat (honest):** the Frappe **desk** and **CRM SPA** hydrate from a built
-  boot/index and drop *statically-injected* `<script>` tags, so the bubble only auto-attaches after a
-  proper `bench build` (which the **production image build runs**). This dev stack has **no Node**, so
-  `bench build` can't run here — the bubble code is in place and correct, but on this particular stack
-  use the **"AI Help" menu → `/ai-help` page** (fully working). The bubble will light up automatically
-  in any normally-built deployment.
+  via `app_include_js = "klemco_cs.bundle.js"`, with `install_widget_bundle()` publishing it to
+  `assets.json` and `install_crm_spa_widget()` injecting it into the CRM SPA (`/crm`).
+- ⚠️ **Honest status — needs a real asset build:** the Frappe desk loads JS from a **build-time
+  manifest** (the browser fetches hashed bundles and ignores entries added at runtime). Verified
+  empirically: with the bundle registered, the desk browser still makes **zero** requests for it.
+  So the bubble only attaches after a proper `bench build`. This dev stack runs the **stock
+  `frappe/erpnext` image with no Node**, so `bench build` cannot run here. The bubble code is correct
+  and ships in the repo; it activates automatically once `klemco_cs` is built into an image via the
+  **frappe_docker custom-image pipeline**. Until then, the fully-working entry point is the
+  **"AI Help" menu → `/ai-help` page**.
+
+### Persistence note (important)
+The 8080 stack runs the **stock `frappe/erpnext:v16.14.0` image**; `klemco_cs` currently lives only in
+the running container's writable layer (+ this git repo). The **API key persists** (it's in
+`site_config.json` on the `sites` **volume**), but the **app code does not survive a from-image
+recreate**. To make the whole feature (and a built bubble) durable, build `klemco_cs` into a custom
+image (`Dockerfile.klemco` + a `bench build` step via the frappe_docker custom-apps pipeline) and point
+the 8080 stack at `CUSTOM_IMAGE`. This is the single task that resolves both durability and the bubble.
 
 ### 2. Gated write-actions (create records) — ✅ live-tested
 - The model can only **propose** a record (`propose_create` tool) — it never writes. The reply carries a

@@ -302,6 +302,32 @@ def confirm_create(doctype, values):
     return {"created": True, "doctype": doctype, "name": doc.name}
 
 
+def install_widget_bundle():
+    """Publish the floating-bubble JS as a desk bundle WITHOUT a Node build. The script is
+    plain browser-ready JS (no transpile), so we copy it into the assets dist folder and
+    register it in assets.json under 'klemco_cs.bundle.js' (the name used in app_include_js).
+    Idempotent; runs on every migrate so it survives asset refreshes."""
+    import os
+    import shutil
+    try:
+        src = frappe.get_app_path("klemco_cs", "public", "js", "ai_widget.js")
+        assets = os.path.join(frappe.utils.get_bench_path(), "sites", "assets")
+        dist = os.path.join(assets, "klemco_cs", "dist", "js")
+        os.makedirs(dist, exist_ok=True)
+        shutil.copyfile(src, os.path.join(dist, "klemco_cs.bundle.js"))
+        manifest = os.path.join(assets, "assets.json")
+        try:
+            with open(manifest) as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+        data["klemco_cs.bundle.js"] = "/assets/klemco_cs/dist/js/klemco_cs.bundle.js"
+        with open(manifest, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco AI: install_widget_bundle")
+
+
 def install_menu():
     """Idempotently add an 'AI Help' entry to the desk navbar Help dropdown (-> /ai-help).
     Runs on every migrate; safe to call repeatedly."""

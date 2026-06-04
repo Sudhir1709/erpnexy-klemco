@@ -8,8 +8,10 @@ app_color = '#1A5276'
 app_email = 'admin@klemcoindia.com'
 app_license = 'MIT'
 
-# Floating AI Help bubble on every desk page (raw asset path — no build step needed).
-app_include_js = ["/assets/klemco_cs/js/ai_widget.js"]
+# Floating AI Help bubble on every desk page. Registered as a bundle name so the desk's
+# boot loader picks it up (raw asset paths are dropped). The bundle is plain browser-ready
+# JS (no transpile), so it's published to assets.json by install_widget_bundle() on migrate.
+app_include_js = ["klemco_cs.bundle.js"]
 
 fixtures = [
     {'dt': 'Workspace', 'filters': [['app', '=', 'klemco_cs']]},
@@ -22,6 +24,7 @@ fixtures = [
 after_install = 'klemco_cs.setup.after_install'
 # Re-apply custom fields / property setters / print format on every migrate (idempotent).
 after_migrate = ['klemco_cs.customizations.apply_customizations',
+                 'klemco_cs.ai_assistant.api.install_widget_bundle',
                  'klemco_cs.ai_assistant.api.install_menu',
                  'klemco_cs.ai_assistant.api.install_crm_spa_widget']
 
