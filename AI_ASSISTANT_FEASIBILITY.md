@@ -91,6 +91,33 @@ No code change, no redeploy — `chat()` detects the key and flips to live tool-
 
 ---
 
+## Update — enhancements delivered (live-tested)
+
+After the initial PoC, three follow-ups were built and verified against the live key:
+
+### 1. Floating chat bubble (every desk page + CRM SPA)
+- `public/js/ai_widget.js` — a self-contained floating "💬" bubble + chat panel, registered desk-wide
+  via `app_include_js = "/assets/klemco_cs/js/ai_widget.js"` (raw path, no build), and injected into
+  the Frappe CRM SPA (`/crm`) via `install_crm_spa_widget()` (re-applied on migrate).
+- ⚠️ **Dev-stack caveat (honest):** the Frappe **desk** and **CRM SPA** hydrate from a built
+  boot/index and drop *statically-injected* `<script>` tags, so the bubble only auto-attaches after a
+  proper `bench build` (which the **production image build runs**). This dev stack has **no Node**, so
+  `bench build` can't run here — the bubble code is in place and correct, but on this particular stack
+  use the **"AI Help" menu → `/ai-help` page** (fully working). The bubble will light up automatically
+  in any normally-built deployment.
+
+### 2. Gated write-actions (create records) — ✅ live-tested
+- The model can only **propose** a record (`propose_create` tool) — it never writes. The reply carries a
+  `pending_action`; the UI shows a **Confirm / Cancel** card; only an explicit **Confirm** click calls
+  `confirm_create()`, which checks `frappe.has_permission(dt, "create")`, inserts as the logged-in user
+  (all validation applies), and writes an **audit Comment** ("Created via Klemco AI Assistant by …").
+- Scope: `CS Complaint`, `CRM Lead`, `Lead`. Verified end-to-end live: *"capture a new lead …"* →
+  proposal returned, **nothing written** → Confirm → `CRM-LEAD-…` created with audit → cleaned up.
+  Confirmed over the real browser HTTP path (`status`/`chat`/`confirm_create`).
+
+### 3. The `/ai-help` page is now feature-complete
+How-to + live data + the gated write-confirm card, opened from the navbar **Help → AI Help**.
+
 ## Bottom line
 The application can host a CRM AI assistant cleanly, securely, and at any data scale. The PoC proves
 the UI, the menu entry, and the **permission-safe live-data path** end-to-end. The only thing standing

@@ -79,7 +79,24 @@ def tool_list_records(doctype, filters=None, fields=None, limit=10):
     return {"doctype": doctype, "filters": filters or {}, "rows": rows, "returned": len(rows)}
 
 
-TOOLS_IMPL = {"count_records": tool_count_records, "list_records": tool_list_records}
+# Doctypes the assistant may PROPOSE creating. The actual write never happens inside
+# the model loop — only via confirm_create() after an explicit human click.
+ALLOWED_CREATE = {"CS Complaint", "CRM Lead", "Lead"}
+
+
+def tool_propose_create(doctype, values=None):
+    """Propose creating a record. Does NOT write — returns a proposal for the user to confirm."""
+    if doctype not in ALLOWED_CREATE:
+        frappe.throw(f"The assistant cannot create '{doctype}'.")
+    return {"proposed": True, "doctype": doctype, "values": values or {},
+            "note": "Not created yet — awaiting explicit user confirmation in the UI."}
+
+
+TOOLS_IMPL = {
+    "count_records": tool_count_records,
+    "list_records": tool_list_records,
+    "propose_create": tool_propose_create,
+}
 
 TOOLS_SPEC = [
     {
@@ -108,6 +125,21 @@ TOOLS_SPEC = [
             "required": ["doctype"],
         },
     },
+    {
+        "name": "propose_create",
+        "description": ("Propose creating a new record (e.g. log a complaint, capture a lead). "
+                        "This does NOT create anything — it drafts the record and the user must confirm. "
+                        "Use when the user asks to create/log/add something. After calling, tell the user "
+                        "to review and confirm; never say it has been created."),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "doctype": {"type": "string", "enum": sorted(ALLOWED_CREATE)},
+                "values": {"type": "object", "description": "Field values for the new record"},
+            },
+            "required": ["doctype", "values"],
+        },
+    },
 ]
 
 
@@ -120,6 +152,9 @@ def _system_prompt():
         "Always use a tool for data questions (counts, lists, status) rather than guessing. "
         "The tools already enforce the user's permissions, so only report what they return. "
         f"Available data doctypes: {', '.join(sorted(ALLOWED_DOCTYPES))}. "
+        "To create/log a record (complaint, lead), call propose_create — this only DRAFTS it; "
+        "the user must confirm in the UI before anything is saved, so never claim it was created. "
+        f"You may propose creating: {', '.join(sorted(ALLOWED_CREATE))}. "
         "Be concise. If a request is outside the CRM, say so politely."
     )
 
@@ -148,6 +183,7 @@ def _anthropic(messages):
 def _run_agent(history, message):
     messages = list(history or [])
     messages.append({"role": "user", "content": message})
+    pending = None  # a drafted create awaiting user confirmation
     for _ in range(MAX_TOOL_TURNS):
         resp = _anthropic(messages)
         blocks = resp.get("content", [])
@@ -158,6 +194,8 @@ def _run_agent(history, message):
                 if b.get("type") == "tool_use":
                     try:
                         out = TOOLS_IMPL[b["name"]](**(b.get("input") or {}))
+                        if b["name"] == "propose_create" and out.get("proposed"):
+                            pending = {"doctype": out["doctype"], "values": out["values"]}
                     except Exception as e:
                         out = {"error": str(e)}
                     tool_results.append({
@@ -166,8 +204,9 @@ def _run_agent(history, message):
                     })
             messages.append({"role": "user", "content": tool_results})
             continue
-        return "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
-    return "I wasn't able to complete that — too many steps. Please rephrase."
+        text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+        return text, pending
+    return "I wasn't able to complete that — too many steps. Please rephrase.", pending
 
 
 # ───────────────────────── demo mode (no API key) ─────────────────────────
@@ -227,8 +266,40 @@ def chat(message, history=None):
 
     if not _api_key():
         return {"reply": _demo(message), "mode": "demo"}
-    reply = _run_agent(clean, message)
-    return {"reply": reply, "mode": "live", "model": _model()}
+    reply, pending = _run_agent(clean, message)
+    out = {"reply": reply, "mode": "live", "model": _model()}
+    if pending:
+        out["pending_action"] = pending
+    return out
+
+
+@frappe.whitelist(methods=["POST"])
+def confirm_create(doctype, values):
+    """Actually create a record the assistant proposed. This is the ONLY write path and it
+    runs only on an explicit user click — never from inside the model loop."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Please log in.")
+    if doctype not in ALLOWED_CREATE:
+        frappe.throw(f"The assistant cannot create '{doctype}'.")
+    if not frappe.has_permission(doctype, "create"):
+        frappe.throw(f"You don't have permission to create {doctype}.")
+    if isinstance(values, str):
+        values = json.loads(values or "{}")
+    doc = frappe.get_doc({"doctype": doctype, **(values or {})})
+    # auto-fill naming_series if the doctype names by series and the model didn't supply one
+    ns = frappe.get_meta(doctype).get_field("naming_series")
+    if ns and not doc.get("naming_series"):
+        doc.naming_series = ns.default or (ns.options or "").split("\n")[0] or None
+    doc.insert()  # runs as the logged-in user → field-level & mandatory checks apply
+    # audit trail
+    try:
+        frappe.get_doc({"doctype": "Comment", "comment_type": "Info",
+                        "reference_doctype": doctype, "reference_name": doc.name,
+                        "content": f"Created via Klemco AI Assistant by {frappe.session.user}."}).insert(ignore_permissions=True)
+    except Exception:
+        pass
+    frappe.db.commit()
+    return {"created": True, "doctype": doctype, "name": doc.name}
 
 
 def install_menu():
@@ -243,6 +314,31 @@ def install_menu():
         nav.save(ignore_permissions=True)
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Klemco AI: install_menu")
+
+
+def install_crm_spa_widget():
+    """Inject the floating widget into the Frappe CRM SPA (/crm) by adding a <script> tag to
+    the crm app's www/crm.html. This edits a third-party app file, so it is re-applied on every
+    migrate (idempotent) and should be re-run after any crm app upgrade. The desk bubble
+    (app_include_js) needs no such patch."""
+    import os
+    try:
+        from crm import __file__ as crm_init
+    except Exception:
+        return  # crm app not installed
+    path = os.path.join(os.path.dirname(crm_init), "www", "crm.html")
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path) as f:
+            html = f.read()
+        if "ai_widget.js" in html or "</body>" not in html:
+            return
+        tag = '    <script src="/assets/klemco_cs/js/ai_widget.js"></script>\n  </body>'
+        with open(path, "w") as f:
+            f.write(html.replace("</body>", tag, 1))
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco AI: install_crm_spa_widget")
 
 
 @frappe.whitelist()

@@ -75,6 +75,25 @@ async function call(method, body) {
   return j.message;
 }
 
+function confirmCard(pa) {
+  const card = document.createElement('div');
+  card.className = 'msg bot';
+  card.style.cssText = 'border:1px solid #f59e0b;background:#fff;max-width:90%';
+  card.innerHTML = 'Create <strong>' + render(pa.doctype) + '</strong>?<pre style="background:#fafafa;border-radius:6px;padding:6px;font-size:12px;white-space:pre-wrap;margin:6px 0">'
+    + render(JSON.stringify(pa.values, null, 2)) + '</pre>'
+    + '<button class="ok" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;margin-right:6px">Confirm</button>'
+    + '<button class="no" style="background:#e5e7eb;border:none;border-radius:8px;padding:6px 12px;cursor:pointer">Cancel</button>';
+  log.appendChild(card); log.scrollTop = log.scrollHeight;
+  card.querySelector('.ok').onclick = async () => {
+    card.innerHTML = 'Creating…';
+    try {
+      const r = await call('confirm_create', {doctype: pa.doctype, values: JSON.stringify(pa.values)});
+      card.innerHTML = '✅ Created <strong>' + render(r.doctype) + '</strong> <strong>' + render(r.name) + '</strong>.';
+    } catch (e) { card.innerHTML = '⚠️ ' + (e.message || 'could not create'); }
+  };
+  card.querySelector('.no').onclick = () => { card.innerHTML = 'Cancelled — nothing was saved.'; };
+}
+
 async function send(text) {
   if (!text.trim()) return;
   add('user', text); history.push({role:'user', content:text});
@@ -84,6 +103,7 @@ async function send(text) {
     const res = await call('chat', {message:text, history: JSON.stringify(history.slice(0,-1))});
     t.classList.remove('typing'); t.innerHTML = render(res.reply);
     history.push({role:'assistant', content:res.reply});
+    if (res.pending_action) confirmCard(res.pending_action);
   } catch (e) {
     t.classList.remove('typing'); t.innerHTML = '⚠️ ' + (e.message || 'request failed');
   }
