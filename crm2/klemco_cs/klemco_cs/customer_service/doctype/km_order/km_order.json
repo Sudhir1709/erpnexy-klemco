@@ -25,18 +25,18 @@
    "fieldtype": "Link",
    "label": "Linked Sales Order",
    "options": "Sales Order",
-   "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "BR-KM-01: KM orders must be linked to a parent customer Sales Order."
+   "description": "Optional. Link a parent Sales Order to auto-fill the customer and items, or create a standalone Klemco Order and enter the customer directly."
   },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
    "label": "Customer",
    "options": "Customer",
-   "read_only": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "mandatory_depends_on": "eval:!doc.linked_sales_order",
+   "read_only_depends_on": "eval:doc.linked_sales_order"
   },
   {
    "fieldname": "col_break_1",

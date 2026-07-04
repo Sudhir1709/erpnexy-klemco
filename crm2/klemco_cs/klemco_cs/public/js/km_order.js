@@ -7,10 +7,10 @@ frappe.ui.form.on('KM Order', {
             });
         }
         if (frm.is_new()) {
-            frm.set_intro(
-                __('Review the SO items and quantities below, then submit to "Confirm & Create KM Order" (FR-KM-08).'),
-                'orange'
-            );
+            const intro = frm.doc.linked_sales_order
+                ? __('Review the SO items and quantities below, then submit to "Confirm & Create KM Order" (FR-KM-08).')
+                : __('Standalone Klemco Order: select the customer and add items, then submit to "Confirm & Create KM Order". Optionally link a parent Sales Order to pull its items.');
+            frm.set_intro(intro, 'orange');
         }
         _flag_mismatches(frm);
     },
@@ -29,6 +29,8 @@ frappe.ui.form.on('KM Order Item', {
 });
 
 function _flag_mismatches(frm) {
+    // Only meaningful when the KM order was mapped from a parent Sales Order.
+    if (!frm.doc.linked_sales_order) return;
     const mismatched = (frm.doc.items || []).filter(r => (r.km_qty || 0) !== (r.so_qty || 0));
     if (mismatched.length) {
         frm.dashboard.clear_comment();

@@ -95,7 +95,6 @@
    "fieldtype": "Link",
    "label": "Sales Order",
    "options": "Sales Order",
-   "reqd": 1,
    "search_index": 1
   },
   {

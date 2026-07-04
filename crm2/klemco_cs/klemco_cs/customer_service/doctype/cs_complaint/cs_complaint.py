@@ -17,12 +17,11 @@ class CSComplaint(Document):
         self._suggest_assignee()
 
     def validate(self):
-        if not self.linked_sales_order:
-            frappe.throw('Complaint must be linked to a Sales Order (BR-CM01)')
-        if (self.assigned_to and self.algorithm_suggested
-                and self.algorithm_suggested not in (self.assigned_to or '')
-                and not self.override_reason):
-            frappe.throw('Provide an Override Reason when changing the suggested assignee (BR-CM06)')
+        # Linked Sales Order is optional (UAT 01-Jul): a complaint can be logged
+        # before an SO is identified. The algorithm suggestion is now advisory only
+        # (it maps a complaint type to a department *title*, not to the assigned User),
+        # so it no longer gates saving with a mandatory Override Reason.
+        pass
 
     def on_update(self):
         self._update_elapsed()

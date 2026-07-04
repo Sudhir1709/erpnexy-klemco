@@ -12,17 +12,20 @@ from frappe.model.mapper import get_mapped_doc
 
 class KMOrder(Document):
     def validate(self):
-        if not self.linked_sales_order:
-            frappe.throw(_("KM Order must be linked to a parent Sales Order (BR-KM-01)."))
-
-        if not self.customer:
+        # A KM (Klemco) Order may be raised standalone or from a parent Sales Order.
+        # When linked to an SO, the customer is derived from it; otherwise it must be
+        # entered directly (UAT 01-Jul — restores the standalone "Klemco Order" flow).
+        if self.linked_sales_order:
             self.customer = frappe.db.get_value("Sales Order", self.linked_sales_order, "customer")
+        elif not self.customer:
+            frappe.throw(_("Select a Customer, or link a parent Sales Order to derive it."))
 
         if not self.items:
             frappe.throw(_("Add at least one item to the KM Order."))
 
         for row in self.items:
-            row.matches_so = 1 if (row.km_qty or 0) == (row.so_qty or 0) else 0
+            # so_qty is only meaningful when the KM order was mapped from an SO.
+            row.matches_so = 1 if self.linked_sales_order and (row.km_qty or 0) == (row.so_qty or 0) else 0
 
     def before_submit(self):
         # The submit action is the explicit "Confirm & Create KM Order" step (FR-KM-08).

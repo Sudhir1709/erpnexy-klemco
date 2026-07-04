@@ -1,6 +1,6 @@
 {
  "app": "klemco_cs",
- "content": "[{\"id\":\"cs1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Customer Service</b></span>\",\"col\":12}},{\"id\":\"cs2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"CS Complaint\",\"col\":3}},{\"id\":\"cs2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"KM Order\",\"col\":3}},{\"id\":\"cs3\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+ "content": "[{\"id\":\"cs1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Customer Service</b></span>\",\"col\":12}},{\"id\":\"csn1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Complaint\",\"col\":3}},{\"id\":\"csn2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Klemco Order\",\"col\":3}},{\"id\":\"cs2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"All Complaints\",\"col\":3}},{\"id\":\"cs2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Klemco Orders\",\"col\":3}},{\"id\":\"cs3\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
  "doctype": "Workspace",
  "is_hidden": 0,
  "label": "Customer Service",
@@ -17,6 +17,12 @@
  "name": "Customer Service",
  "public": 1,
  "roles": [{"role":"CS Executive"},{"role":"CS Manager"},{"role":"CS Supervisor"},{"role":"System Manager"}],
+ "shortcuts": [
+  {"type":"URL","label":"New Complaint","url":"/app/cs-complaint/new","color":"Blue"},
+  {"type":"URL","label":"New Klemco Order","url":"/app/km-order/new","color":"Green"},
+  {"type":"DocType","label":"All Complaints","link_to":"CS Complaint","doc_view":"List","color":"Grey"},
+  {"type":"DocType","label":"Klemco Orders","link_to":"KM Order","doc_view":"List","color":"Grey"}
+ ],
  "title": "Customer Service",
  "type": "Workspace"
 }
