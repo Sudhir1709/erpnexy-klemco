@@ -293,6 +293,34 @@ PROPERTY_SETTERS = [
         "value": "100",
         "property_type": "Text",
     },
+    # Neither Invoice Portion nor Due Date Based On should be user-mandatory — sensible
+    # values are auto-filled (default 100% + server before_validate) so a user only needs
+    # to enter Credit Days. Due Date Based On defaults to the "days after invoice date"
+    # basis, which is exactly what Credit Days feeds.
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "invoice_portion",
+        "property": "reqd",
+        "value": "0",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "due_date_based_on",
+        "property": "reqd",
+        "value": "0",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "due_date_based_on",
+        "property": "default",
+        "value": "Day(s) after invoice date",
+        "property_type": "Text",
+    },
     {
         "doctype_or_field": "Field",
         "doctype": "Payment Terms Template Detail",

@@ -78,4 +78,7 @@ doc_events = {
     'CS Complaint': {
         'after_insert': 'klemco_cs.notifications.complaint_logged',
     },
+    'Payment Terms Template': {
+        'before_validate': 'klemco_cs.events.payment_terms_template.before_validate',
+    },
 }

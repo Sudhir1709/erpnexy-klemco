@@ -7,6 +7,21 @@ frappe.ui.form.on('Payment Terms Template', {
     refresh: seed_default_term,
 });
 
+frappe.ui.form.on('Payment Terms Template Detail', {
+    // The due date auto-picks the "days after invoice date" basis as soon as Credit
+    // Days is entered — the user only supplies the number of days. A blank portion
+    // fills to the whole invoice (100%). (Server before_validate is the safety net.)
+    credit_days(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (row.credit_days && !row.due_date_based_on) {
+            frappe.model.set_value(cdt, cdn, 'due_date_based_on', 'Day(s) after invoice date');
+        }
+        if (!row.invoice_portion) {
+            frappe.model.set_value(cdt, cdn, 'invoice_portion', 100);
+        }
+    },
+});
+
 function seed_default_term(frm) {
     if (!frm.is_new()) return;
     if ((frm.doc.terms || []).length) return;
