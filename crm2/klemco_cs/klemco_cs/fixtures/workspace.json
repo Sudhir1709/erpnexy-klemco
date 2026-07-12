@@ -2,7 +2,7 @@
  {
   "app": "klemco_cs",
   "charts": [],
-  "content": "[{\"id\":\"cs1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Customer Service</b></span>\",\"col\":12}},{\"id\":\"csn1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Complaint\",\"col\":3}},{\"id\":\"csn2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Klemco Order\",\"col\":3}},{\"id\":\"cs2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"All Complaints\",\"col\":3}},{\"id\":\"cs2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Klemco Orders\",\"col\":3}},{\"id\":\"cs3\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+  "content": "[{\"id\": \"cs1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Customer Service</b></span>\", \"col\": 12}}, {\"id\": \"csn1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"New Complaint\", \"col\": 3}}, {\"id\": \"csn2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"New Klemco Order\", \"col\": 3}}, {\"id\": \"cs2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Complaints\", \"col\": 3}}, {\"id\": \"cs2b\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Klemco Orders\", \"col\": 3}}, {\"id\": \"cs3\", \"type\": \"spacer\", \"data\": {\"col\": 12}}]",
   "custom_blocks": [],
   "docstatus": 0,
   "doctype": "Workspace",
@@ -122,7 +122,7 @@
     "type": "Link"
    }
   ],
-  "modified": "2026-07-04 12:29:04.922017",
+  "modified": "2026-07-12 16:57:30.672672",
   "module": "Customer Service",
   "name": "Customer Service",
   "number_cards": [],
@@ -194,7 +194,7 @@
     "format": null,
     "icon": null,
     "kanban_board": null,
-    "label": "Klemco Orders",
+    "label": "All Klemco Orders",
     "link_to": "KM Order",
     "report_ref_doctype": null,
     "restrict_to_domain": null,
