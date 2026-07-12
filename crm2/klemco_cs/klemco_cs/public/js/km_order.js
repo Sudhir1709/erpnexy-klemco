@@ -18,6 +18,44 @@ frappe.ui.form.on('KM Order', {
     validate(frm) {
         _flag_mismatches(frm);
     },
+
+    linked_sales_order(frm) {
+        // Auto-fill the customer + items from the chosen Sales Order (FR-KM-08),
+        // mirroring the server-side make_km_order mapper. so_qty is the read-only SO
+        // reference; km_qty defaults to it for the CS reviewer to edit.
+        if (!frm.doc.linked_sales_order) return;
+
+        const pull = () => {
+            frappe.db.get_doc('Sales Order', frm.doc.linked_sales_order).then(so => {
+                if (so.customer) frm.set_value('customer', so.customer);
+                frm.clear_table('items');
+                (so.items || []).forEach(it => {
+                    const row = frm.add_child('items');
+                    row.item_code = it.item_code;
+                    row.item_name = it.item_name;
+                    row.so_qty = it.qty;
+                    row.km_qty = it.qty;
+                    row.uom = it.uom;
+                    row.matches_so = 1;
+                });
+                frm.refresh_field('items');
+                _flag_mismatches(frm);
+                frappe.show_alert(
+                    {message: __('Pulled {0} item(s) from {1}', [(so.items || []).length, so.name]), indicator: 'green'}, 5);
+            });
+        };
+
+        const has_rows = (frm.doc.items || []).some(r => r.item_code);
+        if (has_rows) {
+            frappe.confirm(
+                __('Replace the current items with the linked Sales Order\'s items?'),
+                pull,
+                () => {}  // keep existing items
+            );
+        } else {
+            pull();
+        }
+    },
 });
 
 frappe.ui.form.on('KM Order Item', {
