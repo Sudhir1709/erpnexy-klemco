@@ -20,7 +20,9 @@ COPY --chown=frappe:frappe resources/klemco_db_grant.py /home/frappe/frappe-benc
 USER frappe
 RUN cd /home/frappe/frappe-bench \
  && ./env/bin/pip install --no-cache-dir -e apps/klemco_cs \
- && grep -qx klemco_cs sites/apps.txt || echo klemco_cs >> sites/apps.txt
+ && printf '\nklemco_cs\n' >> sites/apps.txt \
+ && awk 'NF && !seen[$0]++' sites/apps.txt > sites/apps.txt.tmp \
+ && mv sites/apps.txt.tmp sites/apps.txt
 RUN cd /home/frappe/frappe-bench \
  && export PATH="$(ls -d /home/frappe/.nvm/versions/node/*/bin | head -1):$PATH" \
  && bench build --app klemco_cs
