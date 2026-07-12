@@ -51,7 +51,11 @@ function _toggle_3pl_note(frm) {
 
 // CR-09 — bound both the header and the per-line Required Delivery Date pickers to today.
 function _bound_delivery_dates(frm) {
-    const today = frappe.datetime.get_today();
+    // min_date must be a native Date object: Frappe's grid datepicker (AirDatepicker) calls
+    // .getFullYear() on it, so a "YYYY-MM-DD" string throws and aborts the row's inline-edit
+    // render — freezing Delivery Date / Required Delivery Date / Quantity. str_to_obj() returns
+    // a native Date. (_client_validate_dates below keeps a string, for date-string comparison.)
+    const today = frappe.datetime.str_to_obj(frappe.datetime.get_today());
     frm.set_df_property('delivery_date', 'min_date', today);
     const grid = frm.fields_dict.items && frm.fields_dict.items.grid;
     if (grid) {
