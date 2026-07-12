@@ -1,0 +1,40 @@
+[
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2026-05-02 12:09:19.556626",
+  "module": "Customer Service",
+  "name": "CS SO Discount Check",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "Sales Order",
+  "script": "\n# BRD §4 FR-4-01, BR-OE-01 — Auto-trigger discount approval if any line exceeds threshold\nthreshold = doc.cs_discount_threshold or 10.0\nmax_discount = max((item.discount_percentage or 0) for item in doc.items) if doc.items else 0\n\n# Auto-flag RC customers\ncustomer_rc = frappe.db.get_value('Customer', doc.customer, 'cs_rc_customer') or 0\nif customer_rc:\n    doc.cs_rc_customer = 1\n\n# Discount gate\nif (max_discount > threshold and\n        doc.cs_discount_approval_status not in ('Approved',)):\n    doc.cs_discount_approval_status = 'Discount Approval — Sales Head'\n    frappe.msgprint(\n        f'Discount of {max_discount:.1f}% exceeds threshold of {threshold:.0f}%. '\n        f'Sales Head approval required before order can proceed. (BR-OE-01)',\n        alert=True, indicator='orange'\n    )\n\n# Credit hold check\nif doc.customer and doc.grand_total:\n    credit_limit = frappe.db.get_value('Customer Credit Limit',\n        {'parent': doc.customer}, 'credit_limit') or 0\n    if credit_limit:\n        outstanding = frappe.db.sql('''\n            SELECT IFNULL(SUM(outstanding_amount), 0)\n            FROM `tabSales Invoice`\n            WHERE customer=%s AND docstatus=1 AND outstanding_amount > 0\n        ''', doc.customer)[0][0] or 0\n        if outstanding + (doc.grand_total or 0) > credit_limit:\n            doc.cs_credit_hold_status = 'On Hold'\n            doc.cs_credit_hold_reason = (\n                f'Outstanding ₹{outstanding:,.0f} + Order ₹{doc.grand_total:,.0f} '\n                f'exceeds credit limit ₹{credit_limit:,.0f}. Finance release required. (BR-OE-02)'\n            )\n            frappe.msgprint(\n                f'Order placed on Credit Hold. Outstanding ₹{outstanding:,.0f} '\n                f'exceeds limit ₹{credit_limit:,.0f}.',\n                alert=True, indicator='red'\n            )\n        else:\n            if doc.cs_credit_hold_status == 'On Hold':\n                pass  # keep hold — only Finance can release\n            else:\n                doc.cs_credit_hold_status = 'Clear'\n",
+  "script_type": "DocType Event"
+ },
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "After Insert",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2026-05-02 12:09:19.572370",
+  "module": "Customer Service",
+  "name": "CS DN Attach Client Order Confirmation",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "Delivery Note",
+  "script": "# BRD v1.2 CR-08 FR-SO-15(d): Auto-attach Client Order Confirmation to DN\nso_name = ''\nfor item in doc.items:\n    if item.get('against_sales_order'):\n        so_name = item.against_sales_order\n        break\nif so_name:\n    coc = frappe.db.get_value('Sales Order', so_name, 'cs_client_order_confirmation') or ''\n    if coc:\n        already = frappe.db.exists('File', {\n            'attached_to_doctype': 'Delivery Note',\n            'attached_to_name': doc.name,\n            'file_url': coc\n        })\n        if not already:\n            orig = frappe.db.get_value('File', {'file_url': coc}, 'name')\n            if orig:\n                od = frappe.get_doc('File', orig)\n                nf = frappe.get_doc({\n                    'doctype': 'File',\n                    'file_name': od.file_name,\n                    'file_url': coc,\n                    'attached_to_doctype': 'Delivery Note',\n                    'attached_to_name': doc.name,\n                    'is_private': 0,\n                    'folder': 'Home/Attachments',\n                })\n                nf.flags.ignore_permissions = True\n                nf.insert(ignore_permissions=True)\n",
+  "script_type": "DocType Event"
+ }
+]

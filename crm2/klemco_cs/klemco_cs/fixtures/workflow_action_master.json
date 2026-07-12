@@ -1,0 +1,65 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.488746",
+  "name": "Start Review",
+  "workflow_action_name": "Start Review"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.499961",
+  "name": "Escalate",
+  "workflow_action_name": "Escalate"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.501163",
+  "name": "Await Customer",
+  "workflow_action_name": "Await Customer"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.502385",
+  "name": "Arrange Pickup",
+  "workflow_action_name": "Arrange Pickup"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.504149",
+  "name": "Send Resolution",
+  "workflow_action_name": "Send Resolution"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.505612",
+  "name": "Resume Review",
+  "workflow_action_name": "Resume Review"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.506928",
+  "name": "De-escalate",
+  "workflow_action_name": "De-escalate"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.508293",
+  "name": "Close Complaint",
+  "workflow_action_name": "Close Complaint"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-04-25 02:01:30.509313",
+  "name": "Reopen",
+  "workflow_action_name": "Reopen"
+ }
+]

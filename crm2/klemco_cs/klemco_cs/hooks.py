@@ -19,6 +19,24 @@ fixtures = [
         'CS Executive', 'CS Manager', 'CS Supervisor',
         'Sales Head', 'KM Plant Head', 'Supply Chain Lead',
     ]]]},
+    # ── DB-only objects codified so a fresh site rebuilds the full module ──
+    # Workflow dependencies must be listed before the Workflow itself (import order).
+    {'dt': 'Workflow State', 'filters': [['name', 'in', [
+        'Open', 'Under Review', 'Awaiting Customer Response', 'Escalated',
+        'Reverse Pickup Arranged', 'Resolution Sent', 'Closed',
+    ]]]},
+    {'dt': 'Workflow Action Master', 'filters': [['name', 'in', [
+        'Start Review', 'Escalate', 'Await Customer', 'Arrange Pickup',
+        'Send Resolution', 'Resume Review', 'De-escalate', 'Close Complaint', 'Reopen',
+    ]]]},
+    {'dt': 'Workflow', 'filters': [['name', 'in', ['CS Complaint Workflow']]]},
+    # v16 per-workspace sidebar nav (bugs 1 & 6) — not stored in the Workspace itself.
+    {'dt': 'Workspace Sidebar', 'filters': [['name', 'in', ['Customer Service']]]},
+    # Server Scripts + the Sales Order client script (previously only in the site DB).
+    {'dt': 'Server Script', 'filters': [['name', 'in', [
+        'CS SO Discount Check', 'CS DN Attach Client Order Confirmation',
+    ]]]},
+    {'dt': 'Client Script', 'filters': [['name', 'in', ['CS Sales Order Client Script']]]},
 ]
 
 after_install = 'klemco_cs.setup.after_install'
