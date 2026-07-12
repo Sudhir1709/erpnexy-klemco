@@ -19,6 +19,11 @@ frappe.ui.form.on('Sales Order', {
                 });
             }, __('Create'));
         }
+
+        // Proforma Invoice (advance/approval — not a tax invoice). Printable from a saved order.
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice'));
+        }
     },
 
     onload(frm) {
@@ -40,6 +45,14 @@ frappe.ui.form.on('Sales Order Item', {
         _bound_delivery_dates(frm);
     },
 });
+
+// Open the print view of the current doc with the Proforma Invoice format preselected.
+function _open_proforma(frm, format_name) {
+    const url = '/printview?doctype=' + encodeURIComponent(frm.doctype) +
+        '&name=' + encodeURIComponent(frm.doc.name) +
+        '&format=' + encodeURIComponent(format_name) + '&no_letterhead=0';
+    window.open(url, '_blank');
+}
 
 // CR-14 — show + require the 3PL note only when "Others (not yet decided)" is chosen.
 // (Done in JS instead of a declarative depends_on, which can't safely hold the parenthesised value.)

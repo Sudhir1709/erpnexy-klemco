@@ -405,6 +405,7 @@ def apply_customizations():
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
+    _ensure_proforma_print_formats()
     frappe.clear_cache()
 
 
@@ -511,3 +512,84 @@ def _ensure_delivery_challan_print_format():
         for_doctype=True,
         validate_fields_for_doctype=False,
     )
+
+
+# ── Proforma Invoice — a preliminary, NON-tax bill printable from Quotation / SO ──
+# One Jinja template renders both doctypes (shared fields). Two Print Format records
+# because a format is bound to one doctype. No accounting entry — it's just a print.
+PROFORMA_HTML = """
+<div style="text-align:center;margin-bottom:6px;">
+  <h2 style="margin:0;letter-spacing:1px;">PROFORMA INVOICE</h2>
+  <div style="font-size:11px;color:#b00;">This is a Proforma Invoice — not a tax invoice and not a demand for payment.</div>
+</div>
+<table style="width:100%;font-size:12px;margin-bottom:8px;"><tr>
+  <td style="vertical-align:top;">
+    <strong>{{ doc.company }}</strong><br>
+    {%- set caddr = frappe.db.get_value("Address", {"is_your_company_address":1, "gstin":["!=",""]}, ["address_line1","city","gst_state","gstin"], as_dict=True) %}
+    {%- if caddr %}{{ caddr.address_line1 }}, {{ caddr.city }} ({{ caddr.gst_state }})<br>GSTIN: {{ caddr.gstin }}{% endif %}
+  </td>
+  <td style="vertical-align:top;text-align:right;">
+    <strong>{{ doc.name }}</strong><br>
+    Date: {{ frappe.format(doc.transaction_date, {"fieldtype":"Date"}) }}
+  </td>
+</tr></table>
+<table style="width:100%;font-size:12px;margin-bottom:8px;"><tr>
+  <td style="vertical-align:top;"><strong>Bill To:</strong><br>{{ doc.customer_name }}<br>{{ doc.address_display or "" }}</td>
+  <td style="vertical-align:top;"><strong>Ship To:</strong><br>{{ doc.shipping_address_name and doc.shipping_address or (doc.address_display or "") }}</td>
+</tr></table>
+<table class="table table-bordered" style="font-size:12px;">
+  <thead><tr>
+    <th>#</th><th>Item</th><th>Description</th><th class="text-right">Qty</th><th>UOM</th>
+    <th class="text-right">Rate</th><th class="text-right">Amount</th>
+  </tr></thead>
+  <tbody>
+  {% for row in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ row.item_code }}</td>
+      <td>{{ row.item_name }}</td>
+      <td class="text-right">{{ row.qty }}</td>
+      <td>{{ row.uom }}</td>
+      <td class="text-right">{{ frappe.format(row.rate, {"fieldtype":"Currency"}, doc=doc) }}</td>
+      <td class="text-right">{{ frappe.format(row.amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<table style="width:100%;font-size:12px;">
+  <tr><td style="text-align:right;">Net Total</td>
+      <td style="text-align:right;width:150px;">{{ frappe.format(doc.net_total, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+  {% for t in doc.taxes %}
+  <tr><td style="text-align:right;">{{ t.description }}</td>
+      <td style="text-align:right;">{{ frappe.format(t.tax_amount, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+  {% endfor %}
+  <tr><td style="text-align:right;"><strong>Grand Total</strong></td>
+      <td style="text-align:right;"><strong>{{ frappe.format(doc.grand_total, {"fieldtype":"Currency"}, doc=doc) }}</strong></td></tr>
+</table>
+<div style="font-size:11px;margin-top:6px;">Amount in words: <strong>{{ doc.in_words or "" }}</strong></div>
+<p style="font-size:11px;color:#666;margin-top:14px;border-top:1px solid #ddd;padding-top:6px;">
+  Proforma Invoice for advance/approval only. Goods/services will be billed on a tax invoice raised against
+  the confirmed Sales Order. Bank details for advance payment available on request.
+</p>
+""".strip()
+
+PROFORMA_FORMATS = {
+    "Proforma Invoice": "Sales Order",
+    "Proforma Invoice (Quotation)": "Quotation",
+}
+
+
+def _ensure_proforma_print_formats():
+    for name, dt in PROFORMA_FORMATS.items():
+        if frappe.db.exists("Print Format", name):
+            continue
+        frappe.get_doc({
+            "doctype": "Print Format",
+            "name": name,
+            "doc_type": dt,
+            "module": "Customer Service",
+            "standard": "No",
+            "custom_format": 1,
+            "print_format_type": "Jinja",
+            "html": PROFORMA_HTML,
+        }).insert(ignore_permissions=True)

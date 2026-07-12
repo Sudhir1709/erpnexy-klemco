@@ -49,6 +49,7 @@ after_migrate = ['klemco_cs.customizations.apply_customizations',
 # Form (client) scripts attached to stock doctypes for the v1.3 wireframe changes.
 doctype_js = {
     'Sales Order': 'public/js/sales_order.js',
+    'Quotation': 'public/js/quotation.js',
     'Delivery Note': 'public/js/delivery_note.js',
     'Sales Invoice': 'public/js/sales_invoice.js',
     'Item': 'public/js/item.js',
