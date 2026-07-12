@@ -284,6 +284,16 @@ PROPERTY_SETTERS = [
         "property_type": "Check",
     },
     {
+        # A new term row defaults to the full invoice — the common single-term
+        # template is valid immediately; multi-row users just adjust the split.
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "invoice_portion",
+        "property": "default",
+        "value": "100",
+        "property_type": "Text",
+    },
+    {
         "doctype_or_field": "Field",
         "doctype": "Payment Terms Template Detail",
         "fieldname": "description",

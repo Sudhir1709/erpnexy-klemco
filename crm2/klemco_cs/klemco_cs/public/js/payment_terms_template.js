@@ -5,15 +5,14 @@
 // "Day(s) after invoice date", so the user only sets Credit Days (e.g. 30).
 frappe.ui.form.on('Payment Terms Template', {
     refresh: seed_default_term,
-    onload: seed_default_term,
 });
 
 function seed_default_term(frm) {
     if (!frm.is_new()) return;
     if ((frm.doc.terms || []).length) return;
-    const row = frm.add_child('terms');
-    row.invoice_portion = 100;
-    row.due_date_based_on = 'Day(s) after invoice date';
+    // invoice_portion defaults to 100 at the field level (Property Setter), so the
+    // new row is already at 100% — we only default the due-date basis here.
+    const row = frm.add_child('terms', {due_date_based_on: 'Day(s) after invoice date'});
     frm.refresh_field('terms');
     frm.set_intro(
         __('Set the % of the invoice due and after how many days it is payable. ' +
