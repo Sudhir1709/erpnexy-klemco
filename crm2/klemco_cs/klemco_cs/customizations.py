@@ -401,10 +401,18 @@ def apply_customizations():
     """Idempotent — safe to run on every migrate."""
     _ensure_roles()
     _ensure_project_permissions()
+    _ensure_billing_controls()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
     frappe.clear_cache()
+
+
+def _ensure_billing_controls():
+    """A Sales Invoice must originate from a Sales Order — no billing for un-ordered goods.
+    ERPNext enforces this via Selling Settings.so_required (so_dn_required); POS is exempt."""
+    if frappe.db.get_single_value("Selling Settings", "so_required") != "Yes":
+        frappe.db.set_single_value("Selling Settings", "so_required", "Yes")
 
 
 def _ensure_roles():
