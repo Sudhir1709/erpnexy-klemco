@@ -15,6 +15,7 @@
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+from frappe.permissions import add_permission, update_permission_property
 
 # Roles the CS CRM relies on. Auto-created on every migrate so the v1.3 approval flows
 # (Sales Head RC deviation; KM Plant Head + Supply Chain Lead triple approval) always exist —
@@ -27,6 +28,11 @@ REQUIRED_ROLES = [
     "KM Plant Head",
     "Supply Chain Lead",
 ]
+
+# CS operational roles allowed to create/link Projects inline from the Sales Order
+# (Accounting Dimensions → Project). Frappe only offers the "+ Create a new Project"
+# quick-entry in the link picker to users who hold create permission on Project.
+PROJECT_PERM_ROLES = ["CS Executive", "CS Supervisor", "CS Manager"]
 
 KLEMCO_CUSTOMER_TYPES = "\nRegular\nRC (Rate Contract)\nCOD"
 THREE_PL_OPTIONS = "\nMahindra Logistics\nDTDC Freight\nBlue Dart\nOthers (not yet decided)"
@@ -265,6 +271,7 @@ DELIVERY_CHALLAN_PRINT_FORMAT = "Delivery Challan"
 def apply_customizations():
     """Idempotent — safe to run on every migrate."""
     _ensure_roles()
+    _ensure_project_permissions()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
@@ -275,6 +282,18 @@ def _ensure_roles():
     for role in REQUIRED_ROLES:
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+
+
+def _ensure_project_permissions():
+    """Let CS users create/link Projects inline from the Sales Order (Accounting Dimensions).
+    Adds a Custom DocPerm on Project for each CS operational role — idempotent, re-applied on
+    every migrate. Without create permission Frappe hides the "+ Create a new Project" quick-entry."""
+    for role in PROJECT_PERM_ROLES:
+        if not frappe.db.exists("Role", role):
+            continue
+        add_permission("Project", role, 0)  # creates a Custom DocPerm (read=1) if absent
+        for ptype in ("read", "write", "create"):
+            update_permission_property("Project", role, 0, ptype, 1, validate=False)
 
 
 def _apply_property_setters():
