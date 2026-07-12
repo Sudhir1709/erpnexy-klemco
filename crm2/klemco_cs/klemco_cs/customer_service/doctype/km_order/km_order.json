@@ -11,6 +11,18 @@
  "creation": "2026-05-01 00:00:00",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "field_order": [
+  "naming_series",
+  "linked_sales_order",
+  "customer",
+  "col_break_1",
+  "status",
+  "km_tat_date",
+  "transfer_billing_status",
+  "items_section",
+  "items",
+  "amended_from"
+ ],
  "fields": [
   {
    "fieldname": "naming_series",
@@ -18,7 +30,7 @@
    "label": "Series",
    "options": "KMPO-.YYYY.-",
    "default": "KMPO-.YYYY.-",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "linked_sales_order",
@@ -87,11 +99,52 @@
   }
  ],
  "permissions": [
-  {"role": "CS Executive", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1},
-  {"role": "CS Supervisor", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1},
-  {"role": "CS Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "delete": 1, "print": 1},
-  {"role": "KM Plant Head", "read": 1, "write": 1},
-  {"role": "Supply Chain Lead", "read": 1},
-  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "delete": 1, "print": 1}
+  {
+   "role": "CS Executive",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1
+  },
+  {
+   "role": "CS Supervisor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1
+  },
+  {
+   "role": "CS Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "delete": 1,
+   "print": 1
+  },
+  {
+   "role": "KM Plant Head",
+   "read": 1,
+   "write": 1
+  },
+  {
+   "role": "Supply Chain Lead",
+   "read": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "delete": 1,
+   "print": 1
+  }
  ]
 }

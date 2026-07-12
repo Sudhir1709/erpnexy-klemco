@@ -8,6 +8,14 @@
  "creation": "2026-05-01 00:00:00",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "so_qty",
+  "km_qty",
+  "uom",
+  "matches_so"
+ ],
  "fields": [
   {
    "fieldname": "item_code",
