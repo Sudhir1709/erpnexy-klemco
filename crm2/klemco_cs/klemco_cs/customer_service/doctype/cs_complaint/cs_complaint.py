@@ -25,11 +25,46 @@ class CSComplaint(Document):
 
     def on_update(self):
         self._update_elapsed()
+        self._sync_assignment()
         if self.status == 'Closed' and not self.csat_survey_sent:
             self.db_set('csat_survey_sent', 1)
             frappe.msgprint(f'CSAT survey triggered for {self.name}', alert=True)
             from klemco_cs.notifications import complaint_closed_csat
             complaint_closed_csat(self)
+
+    def _sync_assignment(self):
+        """Mirror the business 'Assigned To' field into Frappe's ToDo assignment
+        so the assignee sees the complaint in 'Assigned to Me' (UAT 12-Jul). The
+        custom field stays the source of truth; setting/changing it keeps the
+        framework assignment in sync. Best-effort — never blocks the save."""
+        from frappe.desk.form.assign_to import add as _assign_add, remove as _assign_remove
+
+        prev = self.get_doc_before_save()
+        old = prev.assigned_to if prev else None
+        new = self.assigned_to
+
+        # on reassignment (or clearing), drop the previous auto-assignment
+        if old and old != new:
+            try:
+                _assign_remove('CS Complaint', self.name, old, ignore_permissions=True)
+            except Exception:
+                pass
+
+        if not new:
+            return
+
+        current = frappe.parse_json(self.get('_assign') or '[]')
+        if new in current:
+            return
+        try:
+            _assign_add({
+                'assign_to': [new],
+                'doctype': 'CS Complaint',
+                'name': self.name,
+                'description': f'Complaint {self.name} — {self.complaint_type} for {self.customer}',
+            }, ignore_permissions=True)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), 'CS auto-assign failed')
 
     def _set_sla(self):
         hours = SLA_HOURS.get(self.priority, 48)
