@@ -106,7 +106,8 @@
    "create": 1,
    "submit": 1,
    "cancel": 1,
-   "print": 1
+   "print": 1,
+   "share": 1
   },
   {
    "role": "CS Supervisor",
@@ -115,7 +116,8 @@
    "create": 1,
    "submit": 1,
    "cancel": 1,
-   "print": 1
+   "print": 1,
+   "share": 1
   },
   {
    "role": "CS Manager",
@@ -125,12 +127,14 @@
    "submit": 1,
    "cancel": 1,
    "delete": 1,
-   "print": 1
+   "print": 1,
+   "share": 1
   },
   {
    "role": "KM Plant Head",
    "read": 1,
-   "write": 1
+   "write": 1,
+   "share": 1
   },
   {
    "role": "Supply Chain Lead",
@@ -144,7 +148,8 @@
    "submit": 1,
    "cancel": 1,
    "delete": 1,
-   "print": 1
+   "print": 1,
+   "share": 1
   }
  ]
 }
