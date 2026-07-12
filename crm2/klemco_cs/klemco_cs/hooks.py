@@ -54,6 +54,7 @@ doctype_js = {
     'Item': 'public/js/item.js',
     'CS Complaint': 'public/js/cs_complaint.js',
     'KM Order': 'public/js/km_order.js',
+    'Payment Terms Template': 'public/js/payment_terms_template.js',
 }
 
 # Server-side validation / automation for the v1.3 feedback items.

@@ -262,6 +262,83 @@ PROPERTY_SETTERS = [
         "value": "Delivery Challan",
         "property_type": "Data",
     },
+    # ── Payment Terms Template: streamline the section (declutter) ──────────────
+    # Stock ERPNext exposes a master-link column + a discount block + advanced
+    # fields that confuse CS/accounts users ("couldn't create a payment term").
+    # Reduce the grid to the essentials — Invoice Portion / Due Date Based On /
+    # Credit Days — and tuck the rest into the row detail or hide the advanced bits.
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template",
+        "fieldname": "allocate_payment_based_on_payment_terms",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "payment_term",
+        "property": "in_list_view",
+        "value": "0",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "description",
+        "property": "in_list_view",
+        "value": "0",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "mode_of_payment",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "credit_months",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "discount_type",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "discount",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "discount_validity_based_on",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Payment Terms Template Detail",
+        "fieldname": "discount_validity",
+        "property": "hidden",
+        "value": "1",
+        "property_type": "Check",
+    },
 ]
 
 
@@ -305,7 +382,7 @@ def _apply_property_setters():
             continue
         make_property_setter(
             doctype=ps["doctype"],
-            fieldname=None,
+            fieldname=ps.get("fieldname"),
             property=ps["property"],
             value=ps["value"],
             property_type=ps.get("property_type", "Data"),
