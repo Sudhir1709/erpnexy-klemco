@@ -3,6 +3,7 @@
 #   CR-14 / FR-SO-04  Preferred 3PL "Others (not yet decided)" needs a note
 #   CR-10 / FR-SO-06  RC discount = Conditional Deviation -> Sales Head approval gate
 #   CR-17 / FR-SO-09  Simplified acknowledgement email (no delivery date)
+#   FR-5-02           Auto-GST: default the Tax Category from plant vs delivery state
 
 import frappe
 from frappe import _
@@ -10,6 +11,13 @@ from frappe.utils import getdate, nowdate, formatdate
 
 OTHERS_3PL = "Others (not yet decided)"
 RC_TYPE = "RC (Rate Contract)"
+
+
+def before_validate(doc, method=None):
+    # Safety net over India Compliance: if the tax category is still blank, derive
+    # In-State / Out-State from the dispatch (plant) state vs the delivery state and
+    # apply the matching GST template. Runs before validate so IC computes the amounts.
+    _auto_gst_tax_category(doc)
 
 
 def validate(doc, method=None):
@@ -29,6 +37,82 @@ def before_submit(doc, method=None):
 
 def on_submit(doc, method=None):
     _send_acknowledgement(doc)
+
+
+# ── FR-5-02  Auto-GST tax category ────────────────────────────────────────────
+# India Compliance already auto-picks the tax when the company GSTIN (dispatch state)
+# and place of supply (delivery state) are known. This is a *safety net*: it only fills
+# a still-blank Tax Category, only for the plain In-State/Out-State case, and never
+# overrides a value already set by the user or by India Compliance.
+def _auto_gst_tax_category(doc):
+    try:
+        if doc.get("tax_category"):
+            return  # already chosen (manually or by India Compliance) — respect it
+
+        from_state = _dispatch_state(doc)
+        to_state = _delivery_state(doc)
+        if not from_state or not to_state:
+            return
+
+        category = "In-State" if from_state == to_state else "Out-State"
+        doc.tax_category = category
+
+        if not doc.get("taxes"):
+            template = frappe.db.get_value(
+                "Sales Taxes and Charges Template",
+                {"company": doc.company, "tax_category": category, "disabled": 0},
+                "name",
+            )
+            if template:
+                doc.taxes_and_charges = template
+                from erpnext.controllers.accounts_controller import get_taxes_and_charges
+                for tax in get_taxes_and_charges("Sales Taxes and Charges Template", template):
+                    doc.append("taxes", tax)
+    except Exception:
+        # Tax automation must never block a save; log and let the user pick manually.
+        frappe.log_error(frappe.get_traceback(), "Klemco SO auto-GST tax category failed")
+
+
+def _normalise_state(value):
+    """Accept a plain state name or India Compliance's 'NN-State' place-of-supply format."""
+    if not value:
+        return None
+    value = str(value).strip()
+    if len(value) > 3 and value[2] == "-" and value[:2].isdigit():
+        value = value[3:]
+    return value.lower()
+
+
+def _dispatch_state(doc):
+    # Prefer an explicit dispatch/plant address on the order, then the company GSTIN's
+    # state, then the company's default GST-registered address.
+    if doc.get("company_address"):
+        st = frappe.db.get_value("Address", doc.company_address, "gst_state")
+        if st:
+            return _normalise_state(st)
+    if doc.get("company_gstin"):
+        try:
+            from india_compliance.gst_india.utils import get_state
+            st = get_state(doc.company_gstin[:2])
+            if st:
+                return _normalise_state(st)
+        except Exception:
+            pass
+    addr = frappe.db.get_value(
+        "Address", {"is_your_company_address": 1, "gstin": ["!=", ""]}, ["gst_state"], as_dict=True
+    )
+    return _normalise_state(addr.gst_state) if addr else None
+
+
+def _delivery_state(doc):
+    if doc.get("place_of_supply"):
+        return _normalise_state(doc.place_of_supply)
+    for addr_field in ("shipping_address_name", "customer_address"):
+        if doc.get(addr_field):
+            st = frappe.db.get_value("Address", doc.get(addr_field), "gst_state")
+            if st:
+                return _normalise_state(st)
+    return None
 
 
 # ── CR-09 / FR-SO-16 ──────────────────────────────────────────────────────────

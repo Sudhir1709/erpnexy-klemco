@@ -60,6 +60,7 @@ doctype_js = {
 # Server-side validation / automation for the v1.3 feedback items.
 doc_events = {
     'Sales Order': {
+        'before_validate': 'klemco_cs.events.sales_order.before_validate',
         'validate': 'klemco_cs.events.sales_order.validate',
         'before_submit': 'klemco_cs.events.sales_order.before_submit',
         'on_submit': 'klemco_cs.events.sales_order.on_submit',
