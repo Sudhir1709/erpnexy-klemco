@@ -377,6 +377,20 @@ PROPERTY_SETTERS = [
         "value": "1",
         "property_type": "Check",
     },
+    # Sales Invoice: make the "Update Stock" option (which reveals Set Source Warehouse)
+    # discoverable for direct billing without a Delivery Note.
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Sales Invoice",
+        "fieldname": "update_stock",
+        "property": "description",
+        "value": (
+            "Tick to also reduce stock at billing — for a direct invoice raised without a "
+            "Delivery Note. The Set Source Warehouse field then appears. Leave off when a "
+            "Delivery Note already moved the stock."
+        ),
+        "property_type": "Text",
+    },
 ]
 
 
