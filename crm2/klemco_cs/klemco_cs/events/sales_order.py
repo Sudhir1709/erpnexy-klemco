@@ -4,13 +4,16 @@
 #   CR-10 / FR-SO-06  RC discount = Conditional Deviation -> Sales Head approval gate
 #   CR-17 / FR-SO-09  Simplified acknowledgement email (no delivery date)
 #   FR-5-02           Auto-GST: default the Tax Category from plant vs delivery state
+#   BR-OE-01          Discount Matrix: max line discount by customer type / item group
+#   BR-OE-02          Credit hold — block submission on hold; Finance release action
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate, formatdate
+from frappe.utils import getdate, nowdate, formatdate, flt, fmt_money
 
 OTHERS_3PL = "Others (not yet decided)"
 RC_TYPE = "RC (Rate Contract)"
+FINANCE_ROLES = {"Accounts Manager", "System Manager"}
 
 
 def before_validate(doc, method=None):
@@ -18,6 +21,9 @@ def before_validate(doc, method=None):
     # In-State / Out-State from the dispatch (plant) state vs the delivery state and
     # apply the matching GST template. Runs before validate so IC computes the amounts.
     _auto_gst_tax_category(doc)
+    # BR-OE-01: set the discount threshold from the Discount Matrix for this customer type,
+    # so the existing gate (Server Script + client) checks against the configured maximum.
+    _apply_discount_matrix(doc)
 
 
 def validate(doc, method=None):
@@ -33,6 +39,67 @@ def before_submit(doc, method=None):
             "This order applies a discount on a Rate Contract customer and is flagged as a "
             "Conditional Deviation. It needs Sales Head approval before submission (BR-SO-01 / FR-SO-06)."
         ))
+    # BR-OE-02: an order on credit hold cannot be submitted until Finance releases it.
+    if doc.get("cs_credit_hold_status") == "On Hold":
+        frappe.throw(_(
+            "This order is on <b>Credit Hold</b> — {0} Finance must release it before it can be "
+            "submitted (BR-OE-02)."
+        ).format(doc.get("cs_credit_hold_reason") or ""))
+
+
+# ── BR-OE-01  Discount Matrix ─────────────────────────────────────────────────
+def _apply_discount_matrix(doc):
+    """Drive the discount-approval gate from the CS Discount Matrix. Sets the order's
+    cs_discount_threshold to the configured max for this customer type (the existing
+    Server Script / client gate then trips against it). Per-line item-group limits that
+    are stricter also flag the order for approval directly."""
+    try:
+        if not doc.get("customer"):
+            return
+        from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
+
+        ctype = frappe.db.get_value("Customer", doc.customer, "custom_klemco_customer_type") or "Regular"
+
+        # Order-level threshold = the customer type's general (all-items) limit.
+        general = get_max_discount(ctype, None)
+        if general is not None:
+            doc.cs_discount_threshold = general
+
+        # Per-line: flag approval if a line exceeds its (possibly stricter) item-group limit.
+        exceeded = False
+        for row in doc.get("items", []):
+            line_disc = flt(row.get("discount_percentage"))
+            if line_disc <= 0:
+                continue
+            ig = frappe.db.get_value("Item", row.item_code, "item_group") if row.item_code else None
+            cap = get_max_discount(ctype, ig)
+            if cap is None:
+                cap = general
+            if cap is not None and line_disc > cap:
+                exceeded = True
+                break
+
+        if exceeded and doc.get("cs_discount_approval_status") != "Approved":
+            doc.cs_discount_approval_status = "Discount Approval — Sales Head"
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount matrix check failed")
+
+
+# ── BR-OE-02  Finance release of a credit hold ────────────────────────────────
+@frappe.whitelist()
+def release_credit_hold(sales_order):
+    """Finance clears a credit hold so the order can proceed. Roles: Accounts Manager / System Manager."""
+    if not (FINANCE_ROLES & set(frappe.get_roles())):
+        frappe.throw(_("Only Finance (Accounts Manager) can release a credit hold."))
+
+    doc = frappe.get_doc("Sales Order", sales_order)
+    if doc.get("cs_credit_hold_status") != "On Hold":
+        frappe.throw(_("This order is not on credit hold."))
+
+    doc.db_set("cs_credit_hold_status", "Clear")
+    doc.db_set("cs_credit_released_by", frappe.session.user)
+    doc.add_comment("Comment", _("Credit hold released by {0}.").format(frappe.session.user))
+    return "Clear"
 
 
 def on_submit(doc, method=None):

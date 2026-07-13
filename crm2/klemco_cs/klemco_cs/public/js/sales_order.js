@@ -24,6 +24,8 @@ frappe.ui.form.on('Sales Order', {
         if (!frm.is_new()) {
             frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice'));
         }
+
+        _credit_hold_ui(frm);
     },
 
     onload(frm) {
@@ -45,6 +47,34 @@ frappe.ui.form.on('Sales Order Item', {
         _bound_delivery_dates(frm);
     },
 });
+
+// BR-OE-02 — Credit hold: show status + a Finance-only "Release Credit Hold" button.
+function _credit_hold_ui(frm) {
+    if (frm.is_new()) return;
+    if (frm.doc.cs_credit_hold_status !== 'On Hold') return;
+
+    frm.dashboard.set_headline_alert(
+        __('🔴 Credit Hold — {0}', [frm.doc.cs_credit_hold_reason || 'Finance release required.']),
+        'red'
+    );
+
+    const roles = frappe.user_roles || [];
+    const is_finance = roles.includes('Accounts Manager') || roles.includes('System Manager');
+    if (is_finance) {
+        frm.add_custom_button(__('Release Credit Hold'), () => {
+            frappe.confirm(__('Release the credit hold on this order?'), () => {
+                frappe.call({
+                    method: 'klemco_cs.events.sales_order.release_credit_hold',
+                    args: {sales_order: frm.doc.name},
+                    callback() {
+                        frappe.show_alert({message: __('Credit hold released.'), indicator: 'green'}, 5);
+                        frm.reload_doc();
+                    },
+                });
+            });
+        }, __('Credit'));
+    }
+}
 
 // Open the print view of the current doc with the Proforma Invoice format preselected.
 function _open_proforma(frm, format_name) {

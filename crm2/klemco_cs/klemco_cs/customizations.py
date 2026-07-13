@@ -402,11 +402,41 @@ def apply_customizations():
     _ensure_roles()
     _ensure_project_permissions()
     _ensure_billing_controls()
+    _ensure_discount_matrix()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
     frappe.clear_cache()
+
+
+# Default max line discount (%) by customer type — the seed rows of the Discount Matrix
+# (BR-OE-01). Editable by Sales Head / CS Manager afterwards. RC customers get 0 (discounts
+# are blocked); the "All" fallback catches anything not otherwise listed.
+DISCOUNT_MATRIX_DEFAULTS = [
+    ("RC (Rate Contract)", 0.0),
+    ("Regular", 10.0),
+    ("COD", 5.0),
+    ("All", 10.0),
+]
+
+
+def _ensure_discount_matrix():
+    if not frappe.db.exists("DocType", "CS Discount Matrix"):
+        return  # doctype not migrated yet
+    for customer_type, max_pct in DISCOUNT_MATRIX_DEFAULTS:
+        exists = frappe.db.exists(
+            "CS Discount Matrix",
+            {"customer_type": customer_type, "item_group": ["in", [None, ""]]},
+        )
+        if exists:
+            continue
+        frappe.get_doc({
+            "doctype": "CS Discount Matrix",
+            "customer_type": customer_type,
+            "max_discount_percent": max_pct,
+            "active": 1,
+        }).insert(ignore_permissions=True)
 
 
 def _ensure_billing_controls():

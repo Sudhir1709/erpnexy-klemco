@@ -1,0 +1,79 @@
+{
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "Customer Service",
+ "name": "CS Discount Matrix",
+ "issingle": 0,
+ "autoname": "DM-.####",
+ "title_field": "customer_type",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "field_order": [
+  "customer_type",
+  "item_group",
+  "max_discount_percent",
+  "active",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer_type",
+   "fieldtype": "Select",
+   "label": "Customer Type",
+   "options": "All\nRegular\nRC (Rate Contract)\nCOD",
+   "default": "All",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Which customer type this limit applies to. 'All' is the fallback."
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Optional. Leave blank to apply to all item groups; set it for a stricter category-specific limit."
+  },
+  {
+   "fieldname": "max_discount_percent",
+   "fieldtype": "Float",
+   "label": "Max Discount (%)",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Maximum line discount allowed without Sales Head approval."
+  },
+  {
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "label": "Active",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "Sales Head",
+   "read": 1, "write": 1, "create": 1, "delete": 1
+  },
+  {
+   "role": "CS Manager",
+   "read": 1, "write": 1, "create": 1
+  },
+  {
+   "role": "CS Executive",
+   "read": 1
+  }
+ ]
+}
