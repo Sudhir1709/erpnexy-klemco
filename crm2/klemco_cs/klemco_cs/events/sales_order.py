@@ -30,6 +30,7 @@ def validate(doc, method=None):
     _validate_delivery_dates(doc)
     _validate_3pl(doc)
     _flag_rc_deviation(doc)
+    _check_credit_hold(doc)
 
 
 def before_submit(doc, method=None):
@@ -39,34 +40,52 @@ def before_submit(doc, method=None):
             "This order applies a discount on a Rate Contract customer and is flagged as a "
             "Conditional Deviation. It needs Sales Head approval before submission (BR-SO-01 / FR-SO-06)."
         ))
+    # BR-OE-01: a line discount above the Discount Matrix cap needs Sales Head approval
+    # (via the CS Sales Order Workflow: "Request Discount Approval" -> "Approve Discount").
+    over = _lines_exceeding_matrix(doc)
+    if over and doc.get("cs_discount_approval_status") != "Approved":
+        frappe.throw(_(
+            "Discount on {0} exceeds the maximum allowed for this customer type. Use "
+            "<b>Request Discount Approval</b> and get Sales Head approval before submitting (BR-OE-01)."
+        ).format(", ".join(over)))
     # BR-OE-02: an order on credit hold cannot be submitted until Finance releases it.
     if doc.get("cs_credit_hold_status") == "On Hold":
         frappe.throw(_(
-            "This order is on <b>Credit Hold</b> — {0} Finance must release it before it can be "
+            "This order is on <b>Credit Hold</b>. {0} Finance must release it before it can be "
             "submitted (BR-OE-02)."
         ).format(doc.get("cs_credit_hold_reason") or ""))
 
 
 # ── BR-OE-01  Discount Matrix ─────────────────────────────────────────────────
+def _customer_type(doc):
+    return frappe.db.get_value("Customer", doc.customer, "custom_klemco_customer_type") or "Regular"
+
+
 def _apply_discount_matrix(doc):
-    """Drive the discount-approval gate from the CS Discount Matrix. Sets the order's
-    cs_discount_threshold to the configured max for this customer type (the existing
-    Server Script / client gate then trips against it). Per-line item-group limits that
-    are stricter also flag the order for approval directly."""
+    """Set cs_discount_threshold from the Discount Matrix for this customer type so the
+    order shows the configured maximum. Enforcement (blocking submit until Sales Head
+    approves via the CS Sales Order Workflow) is in before_submit — we never set the
+    workflow-controlled cs_discount_approval_status directly."""
     try:
         if not doc.get("customer"):
             return
         from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
-
-        ctype = frappe.db.get_value("Customer", doc.customer, "custom_klemco_customer_type") or "Regular"
-
-        # Order-level threshold = the customer type's general (all-items) limit.
-        general = get_max_discount(ctype, None)
+        general = get_max_discount(_customer_type(doc), None)
         if general is not None:
             doc.cs_discount_threshold = general
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount matrix threshold failed")
 
-        # Per-line: flag approval if a line exceeds its (possibly stricter) item-group limit.
-        exceeded = False
+
+def _lines_exceeding_matrix(doc):
+    """Item codes whose line discount exceeds their (customer-type, item-group) cap."""
+    try:
+        if not doc.get("customer"):
+            return []
+        from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
+        ctype = _customer_type(doc)
+        general = get_max_discount(ctype, None)
+        over = []
         for row in doc.get("items", []):
             line_disc = flt(row.get("discount_percentage"))
             if line_disc <= 0:
@@ -76,13 +95,41 @@ def _apply_discount_matrix(doc):
             if cap is None:
                 cap = general
             if cap is not None and line_disc > cap:
-                exceeded = True
-                break
-
-        if exceeded and doc.get("cs_discount_approval_status") != "Approved":
-            doc.cs_discount_approval_status = "Discount Approval — Sales Head"
+                over.append(row.item_code)
+        return over
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Klemco discount matrix check failed")
+        return []
+
+
+# ── BR-OE-02  Credit hold detection ───────────────────────────────────────────
+def _check_credit_hold(doc):
+    """Put the order On Hold when outstanding + this order's value exceeds the customer's
+    credit limit for the company. A hold already set stays until Finance releases it."""
+    try:
+        if not (doc.get("customer") and doc.get("grand_total")):
+            return
+        limit = frappe.db.get_value(
+            "Customer Credit Limit",
+            {"parent": doc.customer, "company": doc.company},
+            "credit_limit",
+        )
+        if not limit:
+            return
+        outstanding = frappe.db.sql(
+            """SELECT IFNULL(SUM(outstanding_amount), 0) FROM `tabSales Invoice`
+               WHERE customer=%s AND company=%s AND docstatus=1 AND outstanding_amount > 0""",
+            (doc.customer, doc.company),
+        )[0][0] or 0
+        if flt(outstanding) + flt(doc.grand_total) > flt(limit):
+            doc.cs_credit_hold_status = "On Hold"
+            doc.cs_credit_hold_reason = _(
+                "Outstanding {0} + Order {1} exceeds credit limit {2}. Finance release required. (BR-OE-02)"
+            ).format(fmt_money(outstanding), fmt_money(doc.grand_total), fmt_money(limit))
+        elif doc.get("cs_credit_hold_status") != "On Hold":
+            doc.cs_credit_hold_status = "Clear"
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco credit-hold check failed")
 
 
 # ── BR-OE-02  Finance release of a credit hold ────────────────────────────────
