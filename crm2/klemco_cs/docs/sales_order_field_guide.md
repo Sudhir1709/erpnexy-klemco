@@ -127,6 +127,33 @@ Stock features that ship with ERPNext. Most are optional.
 
 ---
 
+## Email automation (backend setup)
+
+Automated CS email is configured and verified with a live test send. It all goes out from one **Default
+Outgoing** account.
+
+| Item | Value |
+|---|---|
+| **Email Account** | **Klemcotest** — `klemcotest@gmail.com` |
+| **SMTP** | `smtp.gmail.com` : **587** (TLS) |
+| **Outgoing / Default Outgoing** | ✓ / ✓ |
+| **Incoming (IMAP)** | off (not needed for sending) |
+
+**What sends through it:** complaint logged · order acknowledgement · dispatch notification · credit-hold
+alerts. Every Klemco CS notification uses whichever account is marked *Default Outgoing*.
+
+**To change the sender or password:** Search → **Email Account** → *Klemcotest* → edit the email address or
+password → **Save**. ERPNext tests the SMTP connection on save and stores the password **encrypted**; a wrong
+password fails immediately with an authentication error.
+
+**Gmail App Password:** if Google ever rejects the plain password, generate a 16-character **App Password**
+(myaccount.google.com → Security → 2-Step Verification → App passwords → Mail) and use that instead.
+
+**Other sites:** email accounts and passwords are **per-site encrypted secrets** — they are not carried in the
+application image. The production site must be configured separately the same way.
+
+---
+
 ## Billing & the warehouse (Sales Invoice)
 
 A Sales Invoice shows **no warehouse** by default — on purpose:
