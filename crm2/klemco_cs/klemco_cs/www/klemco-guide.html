@@ -186,6 +186,9 @@
       <li><a href="#make-dn">Create a Delivery Note</a></li>
       <li><a href="#connections">See linked documents</a></li>
       <li><a href="#who-when">Who created it / when</a></li>
+      <li><a href="#dispatch-dn">Warehouse dispatch</a></li>
+      <li><a href="#freight">Adding freight</a></li>
+      <li><a href="#share">Sharing a document</a></li>
     </ul>
     <div class="grp" style="margin-top:12px">More Info — Built for Klemco</div>
     <ul>
@@ -447,6 +450,65 @@
     </div>
   </section>
 
+  <section class="sec" id="dispatch-dn">
+    <h3><a class="anchor" href="#dispatch-dn">Warehouse dispatch — Docket, Tracking, POD</a></h3>
+    <p class="purpose">These are captured on the <b>Delivery Note</b> (the warehouse's document), because they're
+    known at dispatch — after the order is submitted and locked.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Where</span><span class="tag tag-sys">Delivery Note</span></div>
+        <p class="fdesc">Open the Delivery Note → <b>Dispatch &amp; Tracking</b> section → <b>Docket / LR #</b>,
+        <b>Tracking URL</b>, <b>Proof of Delivery (POD)</b>. These stay editable <em>even after the Delivery
+        Note is submitted</em>, so the warehouse can add the POD once the goods are delivered.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Who</span><span class="tag tag-fill">Warehouse</span></div>
+        <p class="fdesc">The <b>Stock User / Stock Manager</b> role (who creates the Delivery Note) fills these.
+        Mandate docs — <b>Customer PO Copy, Test Certificates, Client Order Confirmation</b> — are provided
+        earlier by <b>CS / Sales on the Sales Order</b> before confirmation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="freight">
+    <h3><a class="anchor" href="#freight">Adding freight (and other charges)</a></h3>
+    <p class="purpose">Freight is a charge line, not a field — added when the amount is known (after dispatch).</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">How</span><span class="tag tag-fill">You add</span></div>
+        <p class="fdesc">On the <b>Sales Invoice</b> (billed after delivery) → <b>Taxes</b> table → <b>Add row</b>
+        → <b>Type: Actual</b>, <b>Account Head: “Freight and Forwarding Charges”</b>, <b>Amount:</b> the freight
+        cost. It's added to the invoice total. (You can add the same line on the Delivery Note if you prefer to
+        record it at dispatch.)</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">When</span><span class="tag tag-sys">After the Challan</span></div>
+        <p class="fdesc">Freight is known once the Delivery Challan is raised and the transporter confirms the
+        cost — so it's normally entered at <b>billing time</b> on the invoice. For automatic freight (by value
+        or weight) an admin can set up a <b>Shipping Rule</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="share">
+    <h3><a class="anchor" href="#share">Sharing a document with a specific person</a></h3>
+    <p class="purpose">Give one person access to one record — on top of their role permissions.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Share button</span><span class="tag tag-opt">Right sidebar</span></div>
+        <p class="fdesc">On any document, the <b>Share</b> action (right sidebar) lets you grant a specific
+        user access to <em>this one record</em> — even if their role wouldn't normally show it. Useful for
+        looping someone in (e.g. an escalated complaint to the Inventory Head).</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">The checkboxes</span><span class="tag tag-sys">Access levels</span></div>
+        <p class="fdesc"><b>Read</b> = view · <b>Write</b> = edit · <b>Submit</b> = submit · <b>Share</b> =
+        re-share to others. The <b>“Everyone”</b> row shares with all users. Sharing adds access; it never
+        removes what a role already grants.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ PART 1 ============ -->
   <div class="part">
     <span class="pn">More Info · 1</span>
@@ -551,26 +613,21 @@
   </section>
 
   <section class="sec" id="dispatch-tracking">
-    <h3><a class="anchor" href="#dispatch-tracking">Dispatch &amp; Tracking</a></h3>
-    <p class="purpose">Filled during and after dispatch — plus the customer's SKU-mapping document.</p>
+    <h3><a class="anchor" href="#dispatch-tracking">Client Order Confirmation</a></h3>
+    <p class="purpose">The customer's SKU-mapping document, uploaded on the order before confirmation.</p>
     <div class="fields">
       <div class="field">
-        <div class="fmeta"><span class="fname">Docket / LR #</span><span class="tag tag-fill">You fill</span></div>
-        <p class="fdesc">The transporter's docket / lorry-receipt number for the consignment.</p>
-      </div>
-      <div class="field">
-        <div class="fmeta"><span class="fname">Tracking URL</span><span class="tag tag-fill">You fill</span></div>
-        <p class="fdesc">Link to the courier's live tracking page.</p>
-      </div>
-      <div class="field">
-        <div class="fmeta"><span class="fname">Proof of Delivery (POD)</span><span class="tag tag-fill">You fill</span></div>
-        <p class="fdesc">Photo, signature, or GPS confirmation that the goods were delivered. <span class="ref">FR-4-09</span></p>
-      </div>
-      <div class="field">
-        <div class="fmeta"><span class="fname">Client Order Confirmation</span><span class="tag tag-fill">You fill</span></div>
+        <div class="fmeta"><span class="fname">Client Order Confirmation</span><span class="tag tag-fill">CS / Sales</span></div>
         <p class="fdesc">A <b>Word document (.docx / .doc only)</b> supplied by the customer that maps
         <em>their</em> internal SKUs to Klemco SKUs — the warehouse needs it during packing. On save it is
         <b>auto-attached to the linked Delivery Note</b>. <span class="ref">FR-SO-15 · BR-SO-08</span></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Docket / LR, Tracking, POD</span><span class="tag tag-sys">On the Delivery Note</span></div>
+        <p class="fdesc">These are now captured by the <b>warehouse on the Delivery Note</b> (Dispatch &amp;
+        Tracking section) — not here — because they're known at dispatch, after the order is submitted. See
+        <a class="anchor" href="#dispatch-dn" style="color:var(--accent);text-decoration:underline;">Warehouse
+        dispatch</a> below.</p>
       </div>
     </div>
   </section>

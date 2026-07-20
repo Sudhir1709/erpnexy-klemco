@@ -99,6 +99,27 @@ show them as columns, use the list's **⚙ (gear) → Pick Columns** and add **C
 (These are system fields, so the choice saves per user — ask an admin for a shared saved view if the whole
 team should see them by default.)
 
+### Warehouse dispatch — Docket, Tracking, POD
+These are captured on the **Delivery Note** (the warehouse's document), because they're known at dispatch —
+after the order is submitted and locked. Open the Delivery Note → **Dispatch & Tracking** section → **Docket /
+LR #**, **Tracking URL**, **Proof of Delivery (POD)**. They stay editable **even after the Delivery Note is
+submitted**, so the warehouse can add the POD once delivered. The **Stock User / Stock Manager** role fills
+these. Mandate docs — **Customer PO Copy, Test Certificates, Client Order Confirmation** — are provided
+earlier by **CS / Sales on the Sales Order** before confirmation.
+
+### Adding freight (and other charges)
+Freight is a **charge line**, not a field — added when the amount is known (after dispatch). On the **Sales
+Invoice** → **Taxes** table → **Add row** → **Type: Actual**, **Account Head: "Freight and Forwarding
+Charges"**, **Amount:** the freight cost → it's added to the invoice total. (You can add the same line on the
+Delivery Note to record it at dispatch.) For automatic freight (by value/weight) an admin can set up a
+**Shipping Rule**.
+
+### Sharing a document with a specific person
+On any document, the **Share** action (right sidebar) grants a specific user access to *this one record* — on
+top of their role permissions (e.g. share an escalated complaint with the Inventory Head). **Read** = view ·
+**Write** = edit · **Submit** = submit · **Share** = re-share. The **"Everyone"** row shares with all users.
+Sharing only *adds* access; it never removes what a role already grants.
+
 ---
 
 ## Part B — More Info tab · Built for Klemco
