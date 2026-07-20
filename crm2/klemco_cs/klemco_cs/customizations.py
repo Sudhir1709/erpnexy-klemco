@@ -477,6 +477,24 @@ def _ensure_billing_controls():
     ERPNext enforces this via Selling Settings.so_required (so_dn_required); POS is exempt."""
     if frappe.db.get_single_value("Selling Settings", "so_required") != "Yes":
         frappe.db.set_single_value("Selling Settings", "so_required", "Yes")
+    _ensure_rcm_templates_disabled()
+
+
+def _ensure_rcm_templates_disabled():
+    """Reverse-charge sales are not used here (GST Settings.enable_reverse_charge_in_sales is
+    off), so disable the RCM output tax templates. An accidentally-selected RCM template adds
+    GST and subtracts it back — netting to zero ("tax not getting calculated"). If reverse
+    charge is turned on later, this leaves the templates enabled."""
+    if frappe.db.get_single_value("GST Settings", "enable_reverse_charge_in_sales"):
+        return
+    rcm = frappe.get_all(
+        "Sales Taxes and Charges Template",
+        filters={"tax_category": ["in", ["Reverse Charge In-State", "Reverse Charge Out-State"]],
+                 "disabled": 0},
+        pluck="name",
+    )
+    for t in rcm:
+        frappe.db.set_value("Sales Taxes and Charges Template", t, "disabled", 1)
 
 
 def _ensure_roles():
