@@ -180,6 +180,13 @@
       <li><a href="#taxes">Taxes</a></li>
       <li><a href="#totals">Totals &amp; Discount</a></li>
     </ul>
+    <div class="grp" style="margin-top:12px">Working with orders</div>
+    <ul>
+      <li><a href="#order-chain">The document flow</a></li>
+      <li><a href="#make-dn">Create a Delivery Note</a></li>
+      <li><a href="#connections">See linked documents</a></li>
+      <li><a href="#who-when">Who created it / when</a></li>
+    </ul>
     <div class="grp" style="margin-top:12px">More Info — Built for Klemco</div>
     <ul>
       <li><a href="#customer-service">Customer Service</a></li>
@@ -363,6 +370,79 @@
         <p class="fdesc">An <b>order-level</b> discount (a % or amount) applied on the Net Total or Grand
         Total, plus an optional Coupon Code. Note: line-item discounts are blocked for Rate-Contract
         customers (BR-SO-01).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WORKING WITH ORDERS ============ -->
+  <div class="part">
+    <span class="pn">Flow</span>
+    <h2>Working with orders</h2>
+    <span class="pd">How documents connect, and the everyday tasks around them.</span>
+  </div>
+
+  <section class="sec" id="order-chain">
+    <h3><a class="anchor" href="#order-chain">The document flow</a></h3>
+    <p class="purpose">Each document is created from the one before it — you don't retype anything.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">The chain</span><span class="tag tag-sys">Order → Cash</span></div>
+        <p class="fdesc"><b>Quotation → Sales Order → Delivery Note → Sales Invoice</b> (payment follows).
+        A quotation becomes an order; the order is dispatched on a Delivery Note; the invoice bills for it.
+        Klemco requires each Sales Invoice to come from a Sales Order.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Submit first</span><span class="tag tag-fill">Key rule</span></div>
+        <p class="fdesc">You can only build the <b>next</b> document from a <b>submitted</b> one — a
+        Delivery Note or Invoice can't be made from a <em>draft</em> Sales Order. Fill the order, then
+        <b>Submit</b> it (discount approval / credit hold, if any, must clear first).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="make-dn">
+    <h3><a class="anchor" href="#make-dn">Create a Delivery Note from an order</a></h3>
+    <p class="purpose">Always start from the submitted Sales Order — not a blank Delivery Note.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Steps</span><span class="tag tag-fill">You do</span></div>
+        <p class="fdesc"><b>1.</b> Open the Sales Order and <b>Submit</b> it. &nbsp;<b>2.</b> Click
+        <b>Create → Delivery Note</b> (top-right), or the <b>Save &amp; Create Delivery Note</b> button.
+        &nbsp;<b>3.</b> The Delivery Note opens <b>pre-filled with the order's items</b> — set the
+        <b>Source Warehouse</b> (one that has stock) → <b>Submit</b>.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Can't see the option?</span><span class="tag tag-sys">Why</span></div>
+        <p class="fdesc">The order is probably still a <b>Draft</b> (submit it first), or it's already been
+        <b>fully delivered</b> (nothing left). A blank <em>New Delivery Note</em> from the list won't link to
+        the order unless you use <b>Get Items From → Sales Order</b> — so start from the order instead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="connections">
+    <h3><a class="anchor" href="#connections">See a document's linked documents</a></h3>
+    <p class="purpose">Trace the whole flow from any document.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Connections tab</span><span class="tag tag-sys">Built in</span></div>
+        <p class="fdesc">Open any document → the <b>Connections</b> tab (in the tab bar). It shows every
+        linked document up and down the chain — Quotation, Sales Order, Delivery Note, Sales Invoice,
+        Payment — with counts. Click any to jump. The document's <b>timeline</b> on the right also lists them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="who-when">
+    <h3><a class="anchor" href="#who-when">Who created an order, and when</a></h3>
+    <p class="purpose">The list already carries this — just surface it.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Sort &amp; columns</span><span class="tag tag-opt">List view</span></div>
+        <p class="fdesc">The list is sorted by <b>Created On</b> (the “2 M / 1 M” = time since creation;
+        hover for the exact date). To show them as columns, use the list's <b>⚙ (gear) → Pick Columns</b> and
+        add <b>Created On</b> and <b>Created By</b>. <em>(These are system fields, so the choice saves per
+        user; ask your admin for a shared saved view if the whole team should see them by default.)</em></p>
       </div>
     </div>
   </section>

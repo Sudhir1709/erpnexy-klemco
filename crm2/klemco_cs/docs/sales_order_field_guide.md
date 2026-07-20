@@ -68,6 +68,39 @@ Each field is tagged:
 
 ---
 
+## Working with orders — the document flow
+
+**The chain:** Quotation → Sales Order → Delivery Note → Sales Invoice (payment follows). Each document is
+created *from* the previous one — you never retype. Klemco requires every Sales Invoice to come from a Sales
+Order.
+
+**Key rule — submit first:** you can only build the *next* document from a **submitted** one. A Delivery Note
+or Invoice **can't be made from a draft Sales Order**. Fill the order → **Submit** (discount approval / credit
+hold must clear first) → then create the next document.
+
+### Create a Delivery Note from an order
+1. Open the Sales Order and **Submit** it.
+2. Click **Create → Delivery Note** (top-right), or the **Save & Create Delivery Note** button.
+3. The Delivery Note opens **pre-filled with the order's items** — set the **Source Warehouse** (with stock)
+   → **Submit**.
+
+*Can't see the option?* The order is probably still a **Draft** (submit it first) or already **fully
+delivered**. A blank *New Delivery Note* from the list won't link to the order unless you use **Get Items
+From → Sales Order** — so start from the order.
+
+### See a document's linked documents
+Open any document → the **Connections** tab. It shows every linked document up and down the chain (Quotation,
+Sales Order, Delivery Note, Sales Invoice, Payment) with counts — click any to jump. The **timeline** also
+lists them.
+
+### Who created an order, and when
+The list is sorted by **Created On** (the "2 M / 1 M" = time since creation; hover for the exact date). To
+show them as columns, use the list's **⚙ (gear) → Pick Columns** and add **Created On** and **Created By**.
+(These are system fields, so the choice saves per user — ask an admin for a shared saved view if the whole
+team should see them by default.)
+
+---
+
 ## Part B — More Info tab · Built for Klemco
 The Customer-Service workflow — order type, approvals, credit & dispatch documents.
 
