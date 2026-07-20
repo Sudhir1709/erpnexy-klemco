@@ -31,6 +31,7 @@ frappe.ui.form.on('Sales Order', {
             frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
         }
 
+        _discount_approval_ui(frm);
         _credit_hold_ui(frm);
     },
 
@@ -53,6 +54,35 @@ frappe.ui.form.on('Sales Order Item', {
         _bound_delivery_dates(frm);
     },
 });
+
+// BR-OE-01 — Discount approval: when an over-cap discount is pending, show the status and
+// (for Sales Head / Sales Manager) Approve / Reject buttons.
+function _discount_approval_ui(frm) {
+    if (frm.is_new()) return;
+    if (frm.doc.cs_discount_approval_status !== 'Discount Approval — Sales Head') return;
+
+    const max_disc = Math.max(0, ...(frm.doc.items || []).map(i => i.discount_percentage || 0));
+    frm.dashboard.set_headline_alert(
+        __('⏳ Discount {0}% pending Sales-Head approval (cap {1}%). Cannot be submitted until approved.',
+           [max_disc.toFixed(1), frm.doc.cs_discount_threshold || 0]),
+        'orange'
+    );
+
+    const roles = frappe.user_roles || [];
+    const can_approve = roles.includes('Sales Head') || roles.includes('Sales Manager') || roles.includes('System Manager');
+    if (!can_approve) return;
+
+    const decide = (decision) => frappe.call({
+        method: 'klemco_cs.events.sales_order.set_discount_decision',
+        args: {sales_order: frm.doc.name, decision},
+        callback() {
+            frappe.show_alert({message: __('Discount {0}.', [decision]), indicator: decision === 'Approved' ? 'green' : 'red'}, 5);
+            frm.reload_doc();
+        },
+    });
+    frm.add_custom_button(__('Approve Discount'), () => decide('Approved'), __('Discount'));
+    frm.add_custom_button(__('Reject Discount'), () => decide('Rejected'), __('Discount'));
+}
 
 // BR-OE-02 — Credit hold: show status + a Finance-only "Release Credit Hold" button.
 function _credit_hold_ui(frm) {

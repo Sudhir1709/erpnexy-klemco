@@ -30,6 +30,7 @@ def validate(doc, method=None):
     _validate_delivery_dates(doc)
     _validate_3pl(doc)
     _flag_rc_deviation(doc)
+    _flag_discount_approval(doc)
     _check_credit_hold(doc)
 
 
@@ -40,14 +41,18 @@ def before_submit(doc, method=None):
             "This order applies a discount on a Rate Contract customer and is flagged as a "
             "Conditional Deviation. It needs Sales Head approval before submission (BR-SO-01 / FR-SO-06)."
         ))
-    # BR-OE-01: a line discount above the Discount Matrix cap needs Sales Head approval
-    # (via the CS Sales Order Workflow: "Request Discount Approval" -> "Approve Discount").
-    over = _lines_exceeding_matrix(doc)
-    if over and doc.get("cs_discount_approval_status") != "Approved":
+    # BR-OE-01: an over-cap discount must be Approved (by Sales Head / Sales Manager) before submit.
+    status = doc.get("cs_discount_approval_status")
+    if status == "Discount Approval — Sales Head":
         frappe.throw(_(
-            "Discount on {0} exceeds the maximum allowed for this customer type. Use "
-            "<b>Request Discount Approval</b> and get Sales Head approval before submitting (BR-OE-01)."
-        ).format(", ".join(over)))
+            "This order is <b>pending Sales-Head approval</b> for its discount and cannot be "
+            "submitted yet (BR-OE-01)."
+        ))
+    if status == "Rejected":
+        frappe.throw(_(
+            "The discount on this order was <b>Rejected</b>. Revise the discount within the allowed "
+            "limit (or get it approved) before submitting (BR-OE-01)."
+        ))
     # BR-OE-02: an order on credit hold cannot be submitted until Finance releases it.
     if doc.get("cs_credit_hold_status") == "On Hold":
         frappe.throw(_(
@@ -61,11 +66,15 @@ def _customer_type(doc):
     return frappe.db.get_value("Customer", doc.customer, "custom_klemco_customer_type") or "Regular"
 
 
+DISCOUNT_APPROVERS = {"Sales Head", "Sales Manager", "System Manager"}
+_PENDING = "Discount Approval — Sales Head"
+
+
 def _apply_discount_matrix(doc):
     """Set cs_discount_threshold from the Discount Matrix for this customer type so the
-    order shows the configured maximum. Enforcement (blocking submit until Sales Head
-    approves via the CS Sales Order Workflow) is in before_submit — we never set the
-    workflow-controlled cs_discount_approval_status directly."""
+    order shows the configured maximum. Enforcement is via _flag_discount_approval +
+    before_submit (the blocking CS Sales Order Workflow is retired in favour of this
+    field-based approval, mirroring the RC-deviation flow)."""
     try:
         if not doc.get("customer"):
             return
@@ -75,6 +84,45 @@ def _apply_discount_matrix(doc):
             doc.cs_discount_threshold = general
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Klemco discount matrix threshold failed")
+
+
+def _flag_discount_approval(doc):
+    """Auto-flag the order for Sales-Head approval when a line discount exceeds the matrix
+    cap. The order still SAVES (draft); submission is blocked until it's Approved. Explicit
+    Approved / Rejected decisions are preserved (only cleared when the discount is brought
+    back within the cap)."""
+    try:
+        status = doc.get("cs_discount_approval_status")
+        if _lines_exceeding_matrix(doc):
+            if status not in ("Approved", "Rejected"):
+                doc.cs_discount_approval_status = _PENDING
+        else:
+            # within the cap now — clear any auto/pending flag
+            if status in (None, "", _PENDING):
+                doc.cs_discount_approval_status = "Not Required"
+                doc.cs_discount_approved_by = None
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount approval flag failed")
+
+
+@frappe.whitelist()
+def set_discount_decision(sales_order, decision):
+    """Sales Head / Sales Manager approves or rejects an over-cap discount (BR-OE-01)."""
+    if decision not in ("Approved", "Rejected"):
+        frappe.throw(_("Invalid decision."))
+    if not (DISCOUNT_APPROVERS & set(frappe.get_roles())):
+        frappe.throw(_("Only a Sales Head or Sales Manager can approve/reject a discount."))
+
+    doc = frappe.get_doc("Sales Order", sales_order)
+    if doc.get("cs_discount_approval_status") != _PENDING:
+        frappe.throw(_("This order is not pending discount approval."))
+
+    doc.db_set("cs_discount_approval_status", decision)
+    doc.db_set("cs_discount_approved_by", frappe.session.user)
+    if doc.meta.has_field("cs_discount_approval_time"):
+        doc.db_set("cs_discount_approval_time", frappe.utils.now_datetime())
+    doc.add_comment("Comment", _("Discount {0} by {1}.").format(decision, frappe.session.user))
+    return decision
 
 
 def _lines_exceeding_matrix(doc):
