@@ -391,10 +391,34 @@ PROPERTY_SETTERS = [
         ),
         "property_type": "Text",
     },
-    # Show the Unit of Measure (UOM) as a column in the Sales Order items grid.
+    # Show the Unit of Measure (UOM) as a column in the sales-transaction item grids.
     {
         "doctype_or_field": "Field",
         "doctype": "Sales Order Item",
+        "fieldname": "uom",
+        "property": "in_list_view",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Quotation Item",
+        "fieldname": "uom",
+        "property": "in_list_view",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Sales Invoice Item",
+        "fieldname": "uom",
+        "property": "in_list_view",
+        "value": "1",
+        "property_type": "Check",
+    },
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Delivery Note Item",
         "fieldname": "uom",
         "property": "in_list_view",
         "value": "1",
