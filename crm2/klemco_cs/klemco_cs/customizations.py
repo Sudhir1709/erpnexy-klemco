@@ -533,6 +533,8 @@ def _ensure_rcm_templates_disabled():
     off), so disable the RCM output tax templates. An accidentally-selected RCM template adds
     GST and subtracts it back — netting to zero ("tax not getting calculated"). If reverse
     charge is turned on later, this leaves the templates enabled."""
+    if not frappe.db.exists("DocType", "GST Settings"):
+        return  # india_compliance not installed on this site
     if frappe.db.get_single_value("GST Settings", "enable_reverse_charge_in_sales"):
         return
     rcm = frappe.get_all(
