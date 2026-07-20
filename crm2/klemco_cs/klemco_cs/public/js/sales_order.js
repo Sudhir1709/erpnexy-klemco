@@ -25,6 +25,12 @@ frappe.ui.form.on('Sales Order', {
             frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice'));
         }
 
+        // Add a fresh delivery address (linked to the customer) without leaving the order,
+        // and set it as this order's shipping address.
+        if (frm.doc.customer) {
+            frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
+        }
+
         _credit_hold_ui(frm);
     },
 
@@ -74,6 +80,27 @@ function _credit_hold_ui(frm) {
             });
         }, __('Credit'));
     }
+}
+
+// Create a new Shipping address for the customer via the quick-entry dialog, then set it
+// as this order's Shipping Address. (You can also type a new name in the Shipping Address
+// field itself and pick "Create a new Address".)
+function _new_delivery_address(frm) {
+    frappe.ui.form.make_quick_entry(
+        'Address',
+        (addr) => {
+            if (addr && addr.name) {
+                frm.set_value('shipping_address_name', addr.name);
+                frappe.show_alert({message: __('Delivery address {0} set.', [addr.name]), indicator: 'green'}, 5);
+            }
+        },
+        null,
+        {
+            address_type: 'Shipping',
+            is_shipping_address: 1,
+            links: [{link_doctype: 'Customer', link_name: frm.doc.customer}],
+        }
+    );
 }
 
 // Open the print view of the current doc with the Proforma Invoice format preselected.
