@@ -138,6 +138,44 @@ CUSTOM_FIELDS = {
             "insert_after": "customer_name",
             "description": "Auto-carried from the Sales Order (CR-16). Shown on the Delivery Challan.",
         },
+        # Dispatch & Tracking — captured by the warehouse at dispatch (moved off the Sales Order,
+        # which locks after submit). Stock User/Manager have write access to the Delivery Note.
+        {
+            "fieldname": "cs_dispatch_section",
+            "label": "Dispatch & Tracking",
+            "fieldtype": "Section Break",
+            "insert_after": "custom_delivery_instructions",
+            "collapsible": 1,
+        },
+        {
+            "fieldname": "cs_docket_number",
+            "label": "Docket / LR #",
+            "fieldtype": "Data",
+            "insert_after": "cs_dispatch_section",
+            "allow_on_submit": 1,
+            "description": "Transporter's docket / lorry-receipt number for the consignment.",
+        },
+        {
+            "fieldname": "cs_tracking_url",
+            "label": "Tracking URL",
+            "fieldtype": "Data",
+            "insert_after": "cs_docket_number",
+            "allow_on_submit": 1,
+            "description": "Link to the courier's live tracking page.",
+        },
+        {
+            "fieldname": "cs_dispatch_col",
+            "fieldtype": "Column Break",
+            "insert_after": "cs_tracking_url",
+        },
+        {
+            "fieldname": "cs_pod_attachment",
+            "label": "Proof of Delivery (POD)",
+            "fieldtype": "Attach",
+            "insert_after": "cs_dispatch_col",
+            "allow_on_submit": 1,
+            "description": "Photo, signature, or GPS confirmation of delivery (FR-4-09).",
+        },
     ],
 
     # ── Sales Invoice: COD cheque capture (FR-DP-11 / BR-DP-06) ──
@@ -400,6 +438,16 @@ PROPERTY_SETTERS = [
         "value": "1",
         "property_type": "Check",
     },
+    # Dispatch & Tracking moved to the Delivery Note (warehouse captures it at dispatch) —
+    # hide these on the Sales Order, which locks after submit. Client Order Confirmation stays.
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_docket_number",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_tracking_url",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_pod_attachment",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_dispatch_section",
+     "property": "label", "value": "Client Order Confirmation", "property_type": "Data"},
     {
         "doctype_or_field": "Field",
         "doctype": "Quotation Item",
