@@ -438,6 +438,25 @@ PROPERTY_SETTERS = [
         "value": "1",
         "property_type": "Check",
     },
+    # Pin explicit grid column widths on the Sales Order items grid. The grid renders only
+    # as many in_list_view columns as fit a ~10-unit budget and drops the overflow — with 7
+    # in-list fields (item_code, delivery_date, cs_required_delivery_date, qty, uom, rate,
+    # amount) at their default widths the total exceeds the budget and UOM was being squeezed
+    # out of the rendered grid. These widths sum to 10 so every column (incl. UOM) shows.
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "item_code",
+     "property": "columns", "value": "2", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "delivery_date",
+     "property": "columns", "value": "2", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "cs_required_delivery_date",
+     "property": "columns", "value": "2", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "qty",
+     "property": "columns", "value": "1", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "uom",
+     "property": "columns", "value": "1", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "rate",
+     "property": "columns", "value": "1", "property_type": "Int"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "amount",
+     "property": "columns", "value": "1", "property_type": "Int"},
     # Dispatch & Tracking moved to the Delivery Note (warehouse captures it at dispatch) —
     # hide these on the Sales Order, which locks after submit. Client Order Confirmation stays.
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_docket_number",
@@ -484,6 +503,7 @@ def apply_customizations():
     _ensure_project_permissions()
     _ensure_billing_controls()
     _ensure_discount_matrix()
+    _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
@@ -518,6 +538,40 @@ def _ensure_discount_matrix():
             "max_discount_percent": max_pct,
             "active": 1,
         }).insert(ignore_permissions=True)
+
+
+def _ensure_cs_sidebar_links():
+    """Surface the Discount Matrix under Configuration in the Customer Service left-nav
+    (Workspace Sidebar). The sidebar is a hand-built DB doc, so add the link idempotently on
+    every migrate — otherwise the Discount Matrix is only reachable by typing its URL. Wrapped
+    defensively so a nav tweak never blocks a migrate."""
+    try:
+        if not frappe.db.exists("Workspace Sidebar", "Customer Service"):
+            return
+        if not frappe.db.exists("DocType", "CS Discount Matrix"):
+            return
+        sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
+        if any((i.get("link_to") == "CS Discount Matrix") or (i.get("label") == "Discount Matrix")
+               for i in sb.items):
+            return  # already present
+        # Rebuild items, inserting "Discount Matrix" right after "Category Mapping"
+        # (Configuration group); fall back to appending if that anchor is absent.
+        rows, inserted = [], False
+        new_link = {"label": "Discount Matrix", "link_type": "DocType",
+                    "link_to": "CS Discount Matrix", "url": "", "type": "Link"}
+        for i in sb.items:
+            rows.append({"label": i.label, "link_type": i.link_type,
+                         "link_to": i.link_to, "url": i.get("url"), "type": i.type})
+            if i.label == "Category Mapping" and not inserted:
+                rows.append(dict(new_link)); inserted = True
+        if not inserted:
+            rows.append(dict(new_link))
+        sb.set("items", [])
+        for idx, r in enumerate(rows, start=1):
+            row = sb.append("items", r); row.idx = idx
+        sb.save(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(title="klemco_cs: CS sidebar Discount Matrix link")
 
 
 def _ensure_billing_controls():
