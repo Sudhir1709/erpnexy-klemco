@@ -4,10 +4,32 @@
 
 frappe.ui.form.on('Delivery Note', {
     refresh(frm) {
+        if (frm.doc.customer) {
+            frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
+        }
         if (frm.is_new()) return;
         _render_test_certificates(frm);
     },
 });
+
+// Create a new Shipping address for the customer (quick-entry) and set it on this document.
+function _new_delivery_address(frm) {
+    frappe.ui.form.make_quick_entry(
+        'Address',
+        (addr) => {
+            if (addr && addr.name) {
+                frm.set_value('shipping_address_name', addr.name);
+                frappe.show_alert({message: __('Delivery address {0} set.', [addr.name]), indicator: 'green'}, 5);
+            }
+        },
+        null,
+        {
+            address_type: 'Shipping',
+            is_shipping_address: 1,
+            links: [{link_doctype: 'Customer', link_name: frm.doc.customer}],
+        }
+    );
+}
 
 function _render_test_certificates(frm) {
     frappe.call({
