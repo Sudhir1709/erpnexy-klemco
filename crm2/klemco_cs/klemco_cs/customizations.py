@@ -503,6 +503,7 @@ def apply_customizations():
     _ensure_project_permissions()
     _ensure_billing_controls()
     _ensure_discount_matrix()
+    _ensure_ic_stock_entry_taxes_field()
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
@@ -540,38 +541,90 @@ def _ensure_discount_matrix():
         }).insert(ignore_permissions=True)
 
 
+def _ensure_ic_stock_entry_taxes_field():
+    """Repair a partial India Compliance install that makes EVERY Stock Entry unsaveable.
+
+    india_compliance defines a field group for ("Subcontracting Order", "Subcontracting Receipt",
+    "Stock Entry") in gst_india/constants/custom_fields.py. On this site every field in that group
+    installed EXCEPT the `taxes` child table, yet its hooks (hooks.py -> subcontracting_transaction)
+    run on every Stock Entry save: validate() calls CustomTaxController(...).set_taxes_and_totals()
+    before any subcontracting bail-out, and before_save() iterates `doc.taxes`. With the field
+    missing that raises "'StockEntry' object has no attribute 'taxes'", so no Stock Entry — not even
+    a plain Material Receipt — can be saved. (Symptom: zero Stock Entries existed on the site.)
+
+    Recreate just that one field, exactly as india_compliance declares it. Idempotent; no-op where
+    india_compliance isn't installed.
+    """
+    if not frappe.db.exists("DocType", "India Compliance Taxes and Charges"):
+        return  # india_compliance not installed on this site
+    create_custom_fields(
+        {
+            ("Subcontracting Order", "Subcontracting Receipt", "Stock Entry"): [
+                {
+                    "fieldname": "taxes",
+                    "label": "Estimated Taxes",
+                    "fieldtype": "Table",
+                    "options": "India Compliance Taxes and Charges",
+                    "insert_after": "taxes_and_charges",
+                },
+            ]
+        },
+        update=True,
+    )
+
+
+# Extra links surfaced in the Customer Service left-nav (Workspace Sidebar). Each is inserted
+# after an existing anchor item so it lands in the right group, and only if its target exists.
+CS_SIDEBAR_LINKS = [
+    {"label": "Discount Matrix", "link_type": "DocType", "link_to": "CS Discount Matrix",
+     "after": "Category Mapping", "requires": ("DocType", "CS Discount Matrix")},
+    # "What's in stock?" — the report users actually need; otherwise it's buried in the Stock module.
+    {"label": "Stock Balance", "link_type": "Report", "link_to": "Stock Balance",
+     "after": "Sales Invoices", "requires": ("Report", "Stock Balance")},
+]
+
+
 def _ensure_cs_sidebar_links():
-    """Surface the Discount Matrix under Configuration in the Customer Service left-nav
-    (Workspace Sidebar). The sidebar is a hand-built DB doc, so add the link idempotently on
-    every migrate — otherwise the Discount Matrix is only reachable by typing its URL. Wrapped
-    defensively so a nav tweak never blocks a migrate."""
+    """Surface key screens in the Customer Service left-nav (Workspace Sidebar). The sidebar is a
+    hand-built DB doc, so add any missing links idempotently on every migrate — otherwise they are
+    only reachable by typing a URL. Wrapped defensively so a nav tweak never blocks a migrate."""
     try:
         if not frappe.db.exists("Workspace Sidebar", "Customer Service"):
             return
-        if not frappe.db.exists("DocType", "CS Discount Matrix"):
-            return
         sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
-        if any((i.get("link_to") == "CS Discount Matrix") or (i.get("label") == "Discount Matrix")
-               for i in sb.items):
-            return  # already present
-        # Rebuild items, inserting "Discount Matrix" right after "Category Mapping"
-        # (Configuration group); fall back to appending if that anchor is absent.
-        rows, inserted = [], False
-        new_link = {"label": "Discount Matrix", "link_type": "DocType",
-                    "link_to": "CS Discount Matrix", "url": "", "type": "Link"}
+        existing = {i.label for i in sb.items} | {i.link_to for i in sb.items if i.link_to}
+
+        pending = [
+            l for l in CS_SIDEBAR_LINKS
+            if l["label"] not in existing
+            and l["link_to"] not in existing
+            and frappe.db.exists(l["requires"][0], l["requires"][1])
+        ]
+        if not pending:
+            return
+
+        # Rebuild the child table, dropping each new link in after its anchor; anything whose
+        # anchor is missing is appended at the end.
+        rows = []
         for i in sb.items:
-            rows.append({"label": i.label, "link_type": i.link_type,
-                         "link_to": i.link_to, "url": i.get("url"), "type": i.type})
-            if i.label == "Category Mapping" and not inserted:
-                rows.append(dict(new_link)); inserted = True
-        if not inserted:
-            rows.append(dict(new_link))
+            rows.append({"label": i.label, "link_type": i.link_type, "link_to": i.link_to,
+                         "url": i.get("url"), "type": i.type})
+            for l in list(pending):
+                if i.label == l["after"]:
+                    rows.append({"label": l["label"], "link_type": l["link_type"],
+                                 "link_to": l["link_to"], "url": "", "type": "Link"})
+                    pending.remove(l)
+        for l in pending:  # anchor not found — append
+            rows.append({"label": l["label"], "link_type": l["link_type"],
+                         "link_to": l["link_to"], "url": "", "type": "Link"})
+
         sb.set("items", [])
         for idx, r in enumerate(rows, start=1):
-            row = sb.append("items", r); row.idx = idx
+            row = sb.append("items", r)
+            row.idx = idx
         sb.save(ignore_permissions=True)
     except Exception:
-        frappe.log_error(title="klemco_cs: CS sidebar Discount Matrix link")
+        frappe.log_error(title="klemco_cs: CS sidebar links")
 
 
 def _ensure_billing_controls():
