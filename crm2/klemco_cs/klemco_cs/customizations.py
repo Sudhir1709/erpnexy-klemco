@@ -29,10 +29,12 @@ REQUIRED_ROLES = [
     "Supply Chain Lead",
 ]
 
-# CS operational roles allowed to create/link Projects inline from the Sales Order
-# (Accounting Dimensions → Project). Frappe only offers the "+ Create a new Project"
-# quick-entry in the link picker to users who hold create permission on Project.
-PROJECT_PERM_ROLES = ["CS Executive", "CS Supervisor", "CS Manager"]
+# CS operational roles allowed to create/link master records inline from the Sales Order —
+# Accounting Dimensions → Project, and Sales Team → Sales Person. Frappe only offers the
+# "+ Create a new X" quick-entry in the link picker to users who hold create permission on X;
+# stock ERPNext restricts these to Projects Manager / Sales Master Manager, which CS users lack.
+INLINE_CREATE_ROLES = ["CS Executive", "CS Supervisor", "CS Manager"]
+INLINE_CREATE_DOCTYPES = ["Project", "Sales Person"]
 
 KLEMCO_CUSTOMER_TYPES = "\nRegular\nRC (Rate Contract)\nCOD"
 THREE_PL_OPTIONS = "\nMahindra Logistics\nDTDC Freight\nBlue Dart\nOthers (not yet decided)"
@@ -661,15 +663,20 @@ def _ensure_roles():
 
 
 def _ensure_project_permissions():
-    """Let CS users create/link Projects inline from the Sales Order (Accounting Dimensions).
-    Adds a Custom DocPerm on Project for each CS operational role — idempotent, re-applied on
-    every migrate. Without create permission Frappe hides the "+ Create a new Project" quick-entry."""
-    for role in PROJECT_PERM_ROLES:
-        if not frappe.db.exists("Role", role):
+    """Let CS users create/link master records inline from the Sales Order — Project (Accounting
+    Dimensions) and Sales Person (Sales Team). Adds a Custom DocPerm for each CS operational role —
+    idempotent, re-applied on every migrate. Without create permission Frappe hides the
+    "+ Create a new X" quick-entry (Sales Person is a tree doctype; a persona can also be added
+    from the Sales Person Tree once the role has create)."""
+    for dt in INLINE_CREATE_DOCTYPES:
+        if not frappe.db.exists("DocType", dt):
             continue
-        add_permission("Project", role, 0)  # creates a Custom DocPerm (read=1) if absent
-        for ptype in ("read", "write", "create"):
-            update_permission_property("Project", role, 0, ptype, 1, validate=False)
+        for role in INLINE_CREATE_ROLES:
+            if not frappe.db.exists("Role", role):
+                continue
+            add_permission(dt, role, 0)  # creates a Custom DocPerm (read=1) if absent
+            for ptype in ("read", "write", "create"):
+                update_permission_property(dt, role, 0, ptype, 1, validate=False)
 
 
 def _apply_property_setters():
