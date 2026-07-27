@@ -34,6 +34,7 @@ frappe.ui.form.on('Sales Order', {
 
         _discount_approval_ui(frm);
         _credit_hold_ui(frm);
+        _sitc_ui(frm);
     },
 
     onload(frm) {
@@ -46,10 +47,27 @@ frappe.ui.form.on('Sales Order', {
         _toggle_3pl_note(frm);
     },
 
+    cs_project_type(frm) {
+        _sitc_ui(frm);
+    },
+
     validate(frm) {
         _client_validate_dates(frm);
     },
 });
+
+// SITC / Project order (usually carried from the quotation): drop in the ready-made lump-sum
+// "SITC Works (as per BOQ)" line if the grid is empty, so the order needs no 30-40 BOQ rows.
+function _sitc_ui(frm) {
+    if (frm.doc.cs_project_type !== 'SITC / Project') return;
+    frm.set_intro(__('SITC / Project order — the scope + BOQ carry from the quotation; the lump-sum is on '
+        + 'the "SITC Works" line.'), 'blue');
+    if (!(frm.doc.items || []).length) {
+        const row = frm.add_child('items', { item_code: 'KL-SITC-001', qty: 1 });
+        frm.script_manager.trigger('item_code', row.doctype, row.name);
+        frm.refresh_field('items');
+    }
+}
 
 frappe.ui.form.on('Sales Order Item', {
     items_add(frm) {

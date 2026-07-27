@@ -290,6 +290,52 @@ CUSTOM_FIELDS = {
 }
 
 
+# ── SITC / Project (BOQ) — same fields on Quotation AND Sales Order so make_sales_order carries them ──
+# For SITC (Supply, Installation, Testing & Commissioning) project quotes the salesperson writes a scope,
+# attaches the BOQ, and enters ONE lump-sum line — no 30-40 rows. The fields carry to the SO for execution.
+SITC_ITEM_CODE = "KL-SITC-001"
+_SITC_FIELDS = [
+    {
+        "fieldname": "cs_sitc_section",
+        "label": "SITC / Project",
+        "fieldtype": "Section Break",
+        "insert_after": "order_type",
+        "collapsible": 1,
+    },
+    {
+        "fieldname": "cs_project_type",
+        "label": "Project Type",
+        "fieldtype": "Select",
+        "options": "Standard\nSITC / Project",
+        "default": "Standard",
+        "insert_after": "cs_sitc_section",
+        "in_standard_filter": 1,
+        "translatable": 0,
+        "description": "Choose 'SITC / Project' for a BOQ-based quote — enter one lump-sum line and attach "
+                       "the BOQ instead of 30-40 rows.",
+    },
+    {
+        "fieldname": "cs_scope_of_work",
+        "label": "Scope of Work",
+        "fieldtype": "Text Editor",
+        "insert_after": "cs_project_type",
+        "depends_on": "eval:doc.cs_project_type=='SITC / Project'",
+        "description": "Free-text scope for the SITC / project quotation.",
+    },
+    {
+        "fieldname": "cs_boq_file",
+        "label": "BOQ File",
+        "fieldtype": "Attach",
+        "insert_after": "cs_scope_of_work",
+        "depends_on": "eval:doc.cs_project_type=='SITC / Project'",
+        "mandatory_depends_on": "eval:doc.cs_project_type=='SITC / Project'",
+        "description": "Attach the Bill of Quantities (Excel/PDF). Required for SITC / Project quotes.",
+    },
+]
+CUSTOM_FIELDS["Quotation"] = list(_SITC_FIELDS)
+CUSTOM_FIELDS["Sales Order"] = CUSTOM_FIELDS["Sales Order"] + list(_SITC_FIELDS)
+
+
 # Delivery Note + Sales Order: make the per-item Required Delivery Date picker reject the past
 # client-side as well (server-side enforced in events). Property setter sets min on the field
 # is not supported declaratively, so client scripts handle the picker bound; here we only relabel
@@ -572,7 +618,31 @@ def apply_customizations():
     _apply_property_setters()
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
+    _ensure_sitc_item()
     frappe.clear_cache()
+
+
+def _ensure_sitc_item():
+    """A single lump-sum service item for SITC / Project (BOQ) quotes. Non-stock (no delivery/stock
+    block; the DN stock guard exempts it) with a works/installation SAC so GST + SO/DN/Invoice submit."""
+    if frappe.db.exists("Item", SITC_ITEM_CODE):
+        return
+    group = ("Installation Services" if frappe.db.exists("Item Group", "Installation Services")
+             else ("Services" if frappe.db.exists("Item Group", "Services") else "All Item Groups"))
+    item = {
+        "doctype": "Item",
+        "item_code": SITC_ITEM_CODE,
+        "item_name": "SITC Works (as per BOQ)",
+        "item_group": group,
+        "stock_uom": "Nos",
+        "is_stock_item": 0,
+        "is_sales_item": 1,
+        "is_purchase_item": 0,
+        "description": "Lump-sum SITC / project works billed as per the attached BOQ.",
+    }
+    if frappe.db.exists("GST HSN Code", "995461"):
+        item["gst_hsn_code"] = "995461"   # works/installation SAC (UAT placeholder)
+    frappe.get_doc(item).insert(ignore_permissions=True)
 
 
 # Default max line discount (%) by customer type — the seed rows of the Discount Matrix
