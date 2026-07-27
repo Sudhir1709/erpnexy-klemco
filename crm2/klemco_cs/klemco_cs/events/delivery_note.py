@@ -39,16 +39,29 @@ def _check_stock_availability(doc):
         available = flt(frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": wh}, "actual_qty"))
         if need > available:
             item_name = frappe.get_cached_value("Item", item_code, "item_name") or item_code
+            # Where IS this item in stock? Naming the other warehouses makes the block actionable
+            # ("in stock, just not in the dispatch warehouse").
+            elsewhere = frappe.db.sql(
+                """SELECT warehouse, actual_qty FROM `tabBin`
+                   WHERE item_code=%s AND actual_qty > 0 AND warehouse != %s
+                   ORDER BY actual_qty DESC""",
+                (item_code, wh), as_dict=True,
+            )
+            if elsewhere:
+                where = _("In stock elsewhere: {0}.").format(
+                    ", ".join("{0} ({1})".format(e.warehouse, flt(e.actual_qty)) for e in elsewhere))
+            else:
+                where = _("No stock in any warehouse.")
             shortages.append(
-                _("&bull; {0} ({1}): need {2}, only {3} in {4}").format(
-                    item_code, item_name, need, available, wh)
+                _("&bull; {0} ({1}): need {2} in {3} ({4} available). {5}").format(
+                    item_code, item_name, need, wh, available, where)
             )
 
     if shortages:
         frappe.throw(
             _("Cannot create this delivery challan — insufficient stock:<br>{0}<br><br>"
-              "Receive or transfer stock first, or deliver from a warehouse that has it.").format(
-                "<br>".join(shortages)),
+              "Receive or transfer that stock into the dispatch warehouse, or ship from the warehouse "
+              "that has it.").format("<br>".join(shortages)),
             title=_("Insufficient Stock"),
         )
 
