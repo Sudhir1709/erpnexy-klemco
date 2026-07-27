@@ -612,6 +612,7 @@ def apply_customizations():
     _ensure_roles()
     _ensure_project_permissions()
     _ensure_billing_controls()
+    _ensure_stock_allocation()
     _ensure_discount_matrix()
     _ensure_ic_stock_entry_taxes_field()
     _ensure_default_company()
@@ -676,6 +677,25 @@ def _ensure_discount_matrix():
             "max_discount_percent": max_pct,
             "active": 1,
         }).insert(ignore_permissions=True)
+
+
+def _ensure_stock_allocation():
+    """Stock-allocation rule: when an order is for more than is in stock, reserve the available
+    quantity to that order (FIFO — first confirmed reserves first) and backorder the shortfall.
+    ERPNext's native Stock Reservation does exactly this: auto_reserve_stock earmarks available stock
+    on Sales Order submit, and allow_partial_reservation reserves the available portion when short.
+    Idempotent; guarded on field existence."""
+    meta = frappe.get_meta("Stock Settings")
+    wanted = {
+        "enable_stock_reservation": 1,   # turn the feature on
+        "auto_reserve_stock": 1,         # auto-reserve available stock when a Sales Order is submitted
+        "allow_partial_reservation": 1,  # reserve what's available when stock is short (rest = backorder)
+    }
+    for field, value in wanted.items():
+        if not meta.get_field(field):
+            continue
+        if frappe.db.get_single_value("Stock Settings", field) != value:
+            frappe.db.set_single_value("Stock Settings", field, value)
 
 
 def _ensure_default_company():
