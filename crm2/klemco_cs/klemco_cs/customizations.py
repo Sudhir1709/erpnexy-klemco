@@ -495,8 +495,12 @@ PROPERTY_SETTERS = [
      "property": "columns", "value": "2", "property_type": "Int"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "delivery_date",
      "property": "columns", "value": "2", "property_type": "Int"},
+    # Required Delivery Date removed — redundant with the standard per-line Delivery Date (which is also
+    # per-line and back-date-validated). Keep one date column; the Open-order rule now targets delivery_date.
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "cs_required_delivery_date",
-     "property": "columns", "value": "2", "property_type": "Int"},
+     "property": "in_list_view", "value": "0", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "cs_required_delivery_date",
+     "property": "hidden", "value": "1", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "qty",
      "property": "columns", "value": "1", "property_type": "Int"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "uom",
