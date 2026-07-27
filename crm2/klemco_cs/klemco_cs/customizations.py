@@ -622,6 +622,8 @@ CS_SIDEBAR_LINKS = [
      "after": "All Sales Orders", "requires": ("Report", "Pending Discount Approvals")},
     {"label": "Orders on Credit Hold", "link_type": "Report", "link_to": "Orders on Credit Hold",
      "after": "All Sales Orders", "requires": ("Report", "Orders on Credit Hold")},
+    {"label": "Open Sales Orders", "link_type": "Report", "link_to": "Open Sales Orders",
+     "after": "All Sales Orders", "requires": ("Report", "Open Sales Orders")},
 ]
 
 
@@ -687,6 +689,11 @@ WORKLIST_REPORTS = {
     "Orders on Credit Hold": ("Sales Order",
         ["customer_name", "grand_total", "cs_credit_hold_reason", "transaction_date"],
         [["Sales Order", "cs_credit_hold_status", "=", "On Hold"]]),
+    # Every order that isn't finished — drafts + pending fulfilment (not Completed/Cancelled/Closed).
+    "Open Sales Orders": ("Sales Order",
+        ["customer_name", "status", "transaction_date", "delivery_date", "grand_total",
+         "per_delivered", "per_billed"],
+        [["Sales Order", "status", "not in", ["Completed", "Cancelled", "Closed"]]]),
 }
 
 
