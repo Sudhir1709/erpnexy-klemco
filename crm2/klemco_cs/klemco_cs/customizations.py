@@ -507,6 +507,7 @@ def apply_customizations():
     _ensure_discount_matrix()
     _ensure_ic_stock_entry_taxes_field()
     _ensure_default_company()
+    _ensure_order_reports()
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
@@ -603,7 +604,67 @@ CS_SIDEBAR_LINKS = [
     # "What's in stock?" — the report users actually need; otherwise it's buried in the Stock module.
     {"label": "Stock Balance", "link_type": "Report", "link_to": "Stock Balance",
      "after": "Sales Invoices", "requires": ("Report", "Stock Balance")},
+    # Order lists that also show Created On + Created By (see _ensure_order_reports). The desk List
+    # view can't show those system fields as columns, so these are Report-view reports.
+    {"label": "Sales Orders — Created", "link_type": "Report", "link_to": "Sales Orders — Created",
+     "after": "All Sales Orders", "requires": ("Report", "Sales Orders — Created")},
+    {"label": "Delivery Notes — Created", "link_type": "Report", "link_to": "Delivery Notes — Created",
+     "after": "Delivery Notes", "requires": ("Report", "Delivery Notes — Created")},
+    {"label": "Sales Invoices — Created", "link_type": "Report", "link_to": "Sales Invoices — Created",
+     "after": "Sales Invoices", "requires": ("Report", "Sales Invoices — Created")},
+    {"label": "Klemco Orders — Created", "link_type": "Report", "link_to": "Klemco Orders — Created",
+     "after": "All Klemco Orders", "requires": ("Report", "Klemco Orders — Created")},
+    {"label": "Quotations — Created", "link_type": "Report", "link_to": "Quotations — Created",
+     "after": "New Klemco Order", "requires": ("Report", "Quotations — Created")},
 ]
+
+
+# Order lists with a "who created it, and when" view. The desk List view can only show in_list_view
+# docfields as columns, and `creation` (Created On) / `owner` (Created By) are standard fields, not
+# docfields — so they can never be List columns. Report view renders any field, so we ship a
+# Report-Builder report per order doctype: its business columns + Created On + Created By, newest first.
+ORDER_REPORTS = {
+    "Sales Orders — Created": ("Sales Order",
+        ["customer_name", "status", "transaction_date", "delivery_date", "grand_total",
+         "cs_discount_approval_status", "cs_credit_hold_status"]),
+    "Delivery Notes — Created": ("Delivery Note",
+        ["customer_name", "status", "posting_date", "grand_total", "cs_docket_number"]),
+    "Sales Invoices — Created": ("Sales Invoice",
+        ["customer_name", "status", "posting_date", "grand_total", "outstanding_amount"]),
+    "Quotations — Created": ("Quotation",
+        ["party_name", "status", "transaction_date", "valid_till", "grand_total"]),
+    "Klemco Orders — Created": ("KM Order",
+        ["customer", "status", "linked_sales_order"]),
+}
+
+
+def _ensure_order_reports():
+    import json as _json
+    for name, (dt, cols) in ORDER_REPORTS.items():
+        if not frappe.db.exists("DocType", dt) or frappe.db.exists("Report", name):
+            continue
+        meta = frappe.get_meta(dt)
+        # keep only business columns that actually exist, then append the audit columns
+        fields = [c for c in cols if meta.get_field(c)] + ["creation", "owner"]
+        pairs = [[f, dt] for f in fields]
+        cfg = {
+            "add_total_row": 0,
+            "sort_by": "%s.creation" % dt, "sort_order": "desc",
+            "sort_by_next": None, "sort_order_next": "desc",
+            "filters": [],
+            "columns": pairs,            # newer report-view key
+            "fields": pairs,             # older key — set both for loader compatibility
+            "order_by": "`tab%s`.`creation` desc" % dt,
+        }
+        frappe.get_doc({
+            "doctype": "Report",
+            "report_name": name,
+            "ref_doctype": dt,
+            "report_type": "Report Builder",
+            "is_standard": "No",
+            "module": "Customer Service",
+            "json": _json.dumps(cfg),
+        }).insert(ignore_permissions=True)
 
 
 def _ensure_cs_sidebar_links():
