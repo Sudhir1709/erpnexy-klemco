@@ -65,6 +65,7 @@ doc_events = {
         'validate': 'klemco_cs.events.sales_order.validate',
         'before_submit': 'klemco_cs.events.sales_order.before_submit',
         'on_submit': 'klemco_cs.events.sales_order.on_submit',
+        'on_update': 'klemco_cs.notifications.notify_approval_transitions',
     },
     'Delivery Note': {
         'validate': 'klemco_cs.events.delivery_note.validate',

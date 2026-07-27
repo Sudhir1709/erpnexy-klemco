@@ -122,6 +122,8 @@ def set_discount_decision(sales_order, decision):
     if doc.meta.has_field("cs_discount_approval_time"):
         doc.db_set("cs_discount_approval_time", frappe.utils.now_datetime())
     doc.add_comment("Comment", _("Discount {0} by {1}.").format(decision, frappe.session.user))
+    from klemco_cs.notifications import notify_decision
+    notify_decision(doc.name, "discount", decision, frappe.session.user)
     return decision
 
 
@@ -194,6 +196,8 @@ def release_credit_hold(sales_order):
     doc.db_set("cs_credit_hold_status", "Clear")
     doc.db_set("cs_credit_released_by", frappe.session.user)
     doc.add_comment("Comment", _("Credit hold released by {0}.").format(frappe.session.user))
+    from klemco_cs.notifications import notify_decision
+    notify_decision(doc.name, "credit", "Released", frappe.session.user)
     return "Clear"
 
 

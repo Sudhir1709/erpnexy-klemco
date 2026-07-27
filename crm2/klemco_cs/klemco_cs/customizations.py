@@ -508,6 +508,7 @@ def apply_customizations():
     _ensure_ic_stock_entry_taxes_field()
     _ensure_default_company()
     _ensure_order_reports()
+    _ensure_worklist_reports()
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
@@ -616,6 +617,11 @@ CS_SIDEBAR_LINKS = [
      "after": "All Klemco Orders", "requires": ("Report", "Klemco Orders — Created")},
     {"label": "Quotations — Created", "link_type": "Report", "link_to": "Quotations — Created",
      "after": "New Klemco Order", "requires": ("Report", "Quotations — Created")},
+    # Approval worklists — every order currently stuck for discount / credit sign-off.
+    {"label": "Pending Discount Approvals", "link_type": "Report", "link_to": "Pending Discount Approvals",
+     "after": "All Sales Orders", "requires": ("Report", "Pending Discount Approvals")},
+    {"label": "Orders on Credit Hold", "link_type": "Report", "link_to": "Orders on Credit Hold",
+     "after": "All Sales Orders", "requires": ("Report", "Orders on Credit Hold")},
 ]
 
 
@@ -638,33 +644,55 @@ ORDER_REPORTS = {
 }
 
 
-def _ensure_order_reports():
+def _ensure_report(name, dt, cols, filters=None):
+    """Create one durable Report-Builder report (idempotent). `cols` are business columns
+    (missing ones skipped); Created On + Created By are always appended. `filters` is a list of
+    [doctype, fieldname, operator, value] rows for a worklist view."""
     import json as _json
+    if not frappe.db.exists("DocType", dt) or frappe.db.exists("Report", name):
+        return
+    meta = frappe.get_meta(dt)
+    fields = [c for c in cols if meta.get_field(c)] + ["creation", "owner"]
+    pairs = [[f, dt] for f in fields]
+    cfg = {
+        "add_total_row": 0,
+        "sort_by": "%s.creation" % dt, "sort_order": "desc",
+        "sort_by_next": None, "sort_order_next": "desc",
+        "filters": filters or [],
+        "columns": pairs,            # newer report-view key
+        "fields": pairs,             # older key — set both for loader compatibility
+        "order_by": "`tab%s`.`creation` desc" % dt,
+    }
+    frappe.get_doc({
+        "doctype": "Report",
+        "report_name": name,
+        "ref_doctype": dt,
+        "report_type": "Report Builder",
+        "is_standard": "No",
+        "module": "Customer Service",
+        "json": _json.dumps(cfg),
+    }).insert(ignore_permissions=True)
+
+
+def _ensure_order_reports():
     for name, (dt, cols) in ORDER_REPORTS.items():
-        if not frappe.db.exists("DocType", dt) or frappe.db.exists("Report", name):
-            continue
-        meta = frappe.get_meta(dt)
-        # keep only business columns that actually exist, then append the audit columns
-        fields = [c for c in cols if meta.get_field(c)] + ["creation", "owner"]
-        pairs = [[f, dt] for f in fields]
-        cfg = {
-            "add_total_row": 0,
-            "sort_by": "%s.creation" % dt, "sort_order": "desc",
-            "sort_by_next": None, "sort_order_next": "desc",
-            "filters": [],
-            "columns": pairs,            # newer report-view key
-            "fields": pairs,             # older key — set both for loader compatibility
-            "order_by": "`tab%s`.`creation` desc" % dt,
-        }
-        frappe.get_doc({
-            "doctype": "Report",
-            "report_name": name,
-            "ref_doctype": dt,
-            "report_type": "Report Builder",
-            "is_standard": "No",
-            "module": "Customer Service",
-            "json": _json.dumps(cfg),
-        }).insert(ignore_permissions=True)
+        _ensure_report(name, dt, cols)
+
+
+# Approval worklists — the "what's stuck?" lists for discount / credit sign-off.
+WORKLIST_REPORTS = {
+    "Pending Discount Approvals": ("Sales Order",
+        ["customer_name", "grand_total", "cs_discount_threshold", "transaction_date"],
+        [["Sales Order", "cs_discount_approval_status", "=", "Discount Approval — Sales Head"]]),
+    "Orders on Credit Hold": ("Sales Order",
+        ["customer_name", "grand_total", "cs_credit_hold_reason", "transaction_date"],
+        [["Sales Order", "cs_credit_hold_status", "=", "On Hold"]]),
+}
+
+
+def _ensure_worklist_reports():
+    for name, (dt, cols, filters) in WORKLIST_REPORTS.items():
+        _ensure_report(name, dt, cols, filters)
 
 
 def _ensure_cs_sidebar_links():
