@@ -9,6 +9,7 @@ frappe.ui.form.on('Sales Order', {
         _bound_delivery_dates(frm);
         _toggle_3pl_note(frm);
         _deviation_ui(frm);
+        _connections_prefill(frm);
 
         // CR-11: raise a KM Order after reviewing this SO (submitted orders only).
         if (frm.doc.docstatus === 1) {
@@ -38,6 +39,7 @@ frappe.ui.form.on('Sales Order', {
     onload(frm) {
         _bound_delivery_dates(frm);
         _toggle_3pl_note(frm);
+        _connections_prefill(frm);
     },
 
     custom_preferred_3pl(frm) {
@@ -54,6 +56,26 @@ frappe.ui.form.on('Sales Order Item', {
         _bound_delivery_dates(frm);
     },
 });
+
+// Connections tab "+" should pre-fill from THIS Sales Order (customer + items + rates), not open
+// a near-blank form. Frappe's make_new() runs a mapper only when the doctype is in frm.make_methods
+// (checked first) or custom_make_buttons; otherwise it copies just same-named link fields. ERPNext's
+// SO defines no make_methods, so we wire the doctypes that have a clean SO mapper here. can_create
+// still gates the "+" for submittable targets on a draft (so Delivery Note / Sales Invoice stay
+// "submit first"); this only changes what happens once the "+" is actually clickable. Purchase Order
+// / Work Order / Payment keep ERPNext's own dialog-based flows. Subcontracting Inward Order is left
+// to ERPNext's default — its mapper only applies to subcontracting service items and errors otherwise.
+function _connections_prefill(frm) {
+    const map = (method) => () => frappe.model.open_mapped_doc({ method, frm });
+    const P = 'erpnext.selling.doctype.sales_order.sales_order.';
+    frm.make_methods = Object.assign({}, frm.make_methods, {
+        'Delivery Note': map(P + 'make_delivery_note'),
+        'Sales Invoice': map(P + 'make_sales_invoice'),
+        'Pick List': map(P + 'create_pick_list'),
+        'Material Request': map(P + 'make_material_request'),
+        'Project': map(P + 'make_project'),
+    });
+}
 
 // BR-OE-01 — Discount approval: when an over-cap discount is pending, show the status and
 // (for Sales Head / Sales Manager) Approve / Reject buttons.
