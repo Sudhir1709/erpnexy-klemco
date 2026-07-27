@@ -469,6 +469,37 @@ PROPERTY_SETTERS = [
      "property": "hidden", "value": "1", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_dispatch_section",
      "property": "label", "value": "Client Order Confirmation", "property_type": "Data"},
+    # Declutter the More Info tab — hide stock ERPNext sections Klemco doesn't use. Keep the Status
+    # meters (% Delivered/Billed) and the Customer's PO No./Date under Additional Info.
+    #   Auto Repeat (recurring/subscription orders)
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "subscription_section",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "from_date",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "to_date",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "auto_repeat",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "update_auto_repeat_reference",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    #   UTM Analytics (marketing attribution)
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "utm_analytics_section",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "utm_source",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "utm_medium",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "utm_campaign",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "utm_content",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    #   Additional Info — hide inter-company fields only (keep Customer PO No./Date)
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "is_internal_customer",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "represents_company",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "inter_company_order_reference",
+     "property": "hidden", "value": "1", "property_type": "Check"},
     {
         "doctype_or_field": "Field",
         "doctype": "Quotation Item",
