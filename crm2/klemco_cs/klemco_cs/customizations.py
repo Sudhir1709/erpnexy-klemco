@@ -506,6 +506,7 @@ def apply_customizations():
     _ensure_billing_controls()
     _ensure_discount_matrix()
     _ensure_ic_stock_entry_taxes_field()
+    _ensure_default_company()
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
@@ -541,6 +542,25 @@ def _ensure_discount_matrix():
             "max_discount_percent": max_pct,
             "active": 1,
         }).insert(ignore_permissions=True)
+
+
+def _ensure_default_company():
+    """Default new documents to the GST-registered operating company (Klemco India), not the
+    demo company. New Sales Orders / Delivery Notes / Invoices otherwise defaulted to
+    'Klemco India (Demo)' — which has no GSTIN and no real stock — so GST didn't auto-calculate
+    and stock lookups came up empty. Saving Global Defaults (not a bare set_single_value) is what
+    propagates the framework default. Guarded so it's a no-op where the company is absent (8081)."""
+    company = "Klemco India"
+    if not frappe.db.exists("Company", company) or frappe.db.get_value("Company", company, "is_group"):
+        return
+    if frappe.db.get_single_value("Global Defaults", "default_company") != company:
+        gd = frappe.get_doc("Global Defaults")
+        gd.default_company = company
+        gd.save(ignore_permissions=True)
+    # Global Defaults.on_update doesn't always sync the framework-level default that new_doc reads;
+    # set it directly so a new Sales Order / Delivery Note / Invoice defaults to this company.
+    if frappe.defaults.get_global_default("company") != company:
+        frappe.db.set_default("company", company)
 
 
 def _ensure_ic_stock_entry_taxes_field():
