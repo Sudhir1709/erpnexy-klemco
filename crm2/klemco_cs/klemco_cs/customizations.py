@@ -756,6 +756,9 @@ CS_SIDEBAR_LINKS = [
      "after": "All Sales Orders", "requires": ("Report", "Orders on Credit Hold")},
     {"label": "Open Sales Orders", "link_type": "Report", "link_to": "Open Sales Orders",
      "after": "All Sales Orders", "requires": ("Report", "Open Sales Orders")},
+    # Stock on hand for an item at a plant (warehouse) + the open Sales Orders demanding it there.
+    {"label": "Item Stock & Open Orders", "link_type": "Report", "link_to": "Item Stock and Open Orders",
+     "after": "Sales Invoices", "requires": ("Report", "Item Stock and Open Orders")},
 ]
 
 
