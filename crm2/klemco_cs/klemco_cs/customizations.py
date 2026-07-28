@@ -348,6 +348,15 @@ PROPERTY_SETTERS = [
         "value": "Delivery Challan",
         "property_type": "Data",
     },
+    # KM Order: clear the title field so the order number (KMPO-…) is the clickable link in the list
+    # (Frappe uses `name` as the subject link when there's no title_field). Customer stays a column.
+    {
+        "doctype_or_field": "DocType",
+        "doctype": "KM Order",
+        "property": "title_field",
+        "value": "",
+        "property_type": "Data",
+    },
     # ── Payment Terms Template: streamline the section (declutter) ──────────────
     # Stock ERPNext exposes a master-link column + a discount block + advanced
     # fields that confuse CS/accounts users ("couldn't create a payment term").
