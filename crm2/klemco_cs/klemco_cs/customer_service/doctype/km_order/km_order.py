@@ -48,7 +48,9 @@ class KMOrder(Document):
         self.status = "KM Confirmed"
 
     def on_cancel(self):
-        self.status = "Cancelled"
+        # on_cancel runs AFTER the save, so a plain `self.status = ...` never persists — write it
+        # directly so the list/report shows "Cancelled" instead of the stale "KM Confirmed".
+        self.db_set("status", "Cancelled")
 
 
 @frappe.whitelist()

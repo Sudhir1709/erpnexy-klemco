@@ -810,10 +810,11 @@ ORDER_REPORTS = {
 }
 
 
-def _ensure_report(name, dt, cols, filters=None):
+def _ensure_report(name, dt, cols, filters=None, widths=None):
     """Create one durable Report-Builder report (idempotent). `cols` are business columns
     (missing ones skipped); Created On + Created By are always appended. `filters` is a list of
-    [doctype, fieldname, operator, value] rows for a worklist view."""
+    [doctype, fieldname, operator, value] rows for a worklist view. `widths` is an optional
+    {column_id: px} map (report_view applies column_widths[column.id])."""
     import json as _json
     if not frappe.db.exists("DocType", dt) or frappe.db.exists("Report", name):
         return
@@ -829,6 +830,8 @@ def _ensure_report(name, dt, cols, filters=None):
         "fields": pairs,             # older key — set both for loader compatibility
         "order_by": "`tab%s`.`creation` desc" % dt,
     }
+    if widths:
+        cfg["column_widths"] = widths
     frappe.get_doc({
         "doctype": "Report",
         "report_name": name,
@@ -842,7 +845,9 @@ def _ensure_report(name, dt, cols, filters=None):
 
 def _ensure_order_reports():
     for name, (dt, cols) in ORDER_REPORTS.items():
-        _ensure_report(name, dt, cols)
+        # Widen the order-number (name) column on the KM Order report so the full KMPO-… shows.
+        widths = {"name": 200} if dt == "KM Order" else None
+        _ensure_report(name, dt, cols, widths=widths)
 
 
 # Approval worklists — the "what's stuck?" lists for discount / credit sign-off.
