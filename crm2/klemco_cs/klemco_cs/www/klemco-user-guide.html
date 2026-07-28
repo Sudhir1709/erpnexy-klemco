@@ -528,6 +528,27 @@ footer { margin-top:50px; padding-top:20px; border-top:1px solid var(--line); co
 <tr><td>Know why I can't deliver</td><td>Check Stock Balance &mdash; negative stock is blocked, so receive/transfer stock into the shipping warehouse first.</td></tr>
 </table>
 
+<h3>11.12 Quick test: add stock &rarr; order &rarr; deliver &rarr; bill</h3>
+<p>A complete run-through to test the flow end to end. Each step is built from the <strong>submitted</strong> previous document using the <strong>Create</strong> button &mdash; never start from a blank Delivery Note or Invoice.</p>
+
+<p><strong>Step&nbsp;A &mdash; Add stock</strong> (skip if the item already has stock; e.g. KL-CA-001 already has 300 in <em>Stores - KI</em>):</p>
+<ol class="steps">
+<li><strong>Stock &rarr; New Stock Entry</strong>.</li>
+<li><strong>Stock Entry Type = Material Receipt</strong>.</li>
+<li><strong>Target Warehouse</strong> = a real dispatch warehouse such as <strong>Stores - KI</strong> (not a Transit or Work-in-Progress warehouse).</li>
+<li>Add the item, the <strong>Qty</strong>, and a <strong>Basic Rate</strong> (the cost). It now auto-fills from the item&rsquo;s cost; if it is ever blank, type a value or tick <em>Allow Zero Valuation Rate</em> on the row.</li>
+<li><strong>Save &rarr; Submit</strong>.</li>
+</ol>
+
+<p><strong>Step&nbsp;B &mdash; Raise and bill the order:</strong></p>
+<ol class="steps">
+<li><strong>New Sales Order</strong> &mdash; Company <strong>Klemco India</strong>, pick the Customer, add the item and a Qty within stock &rarr; <strong>Save &rarr; Submit</strong>. Available stock is automatically reserved to the order.</li>
+<li>On the submitted order, <strong>Create &rarr; Delivery Note</strong> &rarr; <strong>Save &rarr; Submit</strong> &mdash; this ships the stock.</li>
+<li>On the order (or the Delivery Note), <strong>Create &rarr; Sales Invoice</strong> &rarr; <strong>Save &rarr; Submit</strong> &mdash; this is the bill; GST is applied.</li>
+<li><em>Optional:</em> on the invoice, <strong>Create &rarr; Payment Entry</strong> to record the payment.</li>
+</ol>
+<div class="note"><strong>Tip:</strong> use the <strong>Connections</strong> tab on the Sales Order at any time to see the linked Delivery Note, Invoice and Payment &mdash; that is how you confirm where the order is in the chain.</div>
+
 <a class="backtop" href="#top">&uarr; Back to top</a>
 
 <!-- ============ 12. CROSS-CUTTING ============ -->
