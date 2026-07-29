@@ -596,6 +596,13 @@ PROPERTY_SETTERS = [
         "value": "1",
         "property_type": "Check",
     },
+    # Item Name is always derived from Item Code (the server fills it on save), so it need not be a
+    # mandatory field. Making it optional lets rows added via the grid Upload / Excel import (which
+    # sets Item Code but not Item Name) save instead of being blocked by the client mandatory check.
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "item_name",
+     "property": "reqd", "value": "0", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Quotation Item", "fieldname": "item_name",
+     "property": "reqd", "value": "0", "property_type": "Check"},
     {
         "doctype_or_field": "Field",
         "doctype": "Sales Invoice Item",
