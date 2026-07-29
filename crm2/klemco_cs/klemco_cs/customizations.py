@@ -34,7 +34,9 @@ REQUIRED_ROLES = [
 # "+ Create a new X" quick-entry in the link picker to users who hold create permission on X;
 # stock ERPNext restricts these to Projects Manager / Sales Master Manager, which CS users lack.
 INLINE_CREATE_ROLES = ["CS Executive", "CS Supervisor", "CS Manager"]
-INLINE_CREATE_DOCTYPES = ["Project", "Sales Person"]
+# Item added so CS users can create item masters (e.g. Freight) — on this site only "Item Manager"
+# had create on Item, which the CS team lacked. Also enables the "+ Create a new Item" inline picker.
+INLINE_CREATE_DOCTYPES = ["Project", "Sales Person", "Item"]
 
 KLEMCO_CUSTOMER_TYPES = "\nRegular\nRC (Rate Contract)\nCOD"
 THREE_PL_OPTIONS = "\nMahindra Logistics\nDTDC Freight\nBlue Dart\nOthers (not yet decided)"
@@ -763,6 +765,9 @@ def _ensure_ic_stock_entry_taxes_field():
 CS_SIDEBAR_LINKS = [
     {"label": "Discount Matrix", "link_type": "DocType", "link_to": "CS Discount Matrix",
      "after": "Category Mapping", "requires": ("DocType", "CS Discount Matrix")},
+    # Item master, reachable from the CS workspace (create Freight / service items here).
+    {"label": "Item", "link_type": "DocType", "link_to": "Item",
+     "after": "Category Mapping", "requires": ("DocType", "Item")},
     # "What's in stock?" — the report users actually need; otherwise it's buried in the Stock module.
     {"label": "Stock Balance", "link_type": "Report", "link_to": "Stock Balance",
      "after": "Sales Invoices", "requires": ("Report", "Stock Balance")},
