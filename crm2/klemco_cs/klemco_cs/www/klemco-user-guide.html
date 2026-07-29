@@ -97,6 +97,7 @@ footer { margin-top:50px; padding-top:20px; border-top:1px solid var(--line); co
     <li><a href="#config">Configuration</a></li>
     <li><a href="#stock">Stock Management</a></li>
     <li><a href="#cross">Cross-cutting: sharing, email, who &amp; when</a></li>
+    <li><a href="#faq">Frequently asked questions</a></li>
   </ol>
 </nav>
 
@@ -585,6 +586,30 @@ footer { margin-top:50px; padding-top:20px; border-top:1px solid var(--line); co
 <p>Every document records its author and timestamps. On the <strong>Connections</strong> tab (or the sidebar of any record) you'll see <em>&ldquo;Created By&rdquo;</em> and <em>&ldquo;Last Edited by&rdquo;</em> with the time. In any list you can sort by <strong>Created On</strong>, and use the <strong>&#9881; (gear) &rarr; Pick Columns</strong> menu to add <em>Created On</em> and <em>Created By</em> columns so you can see, at a glance, who logged each complaint or raised each order and when.</p>
 
 <div class="tip"><strong>Putting it together:</strong> log the complaint &rarr; quote the customer &rarr; confirm the Sales Order (clearing any discount/credit gate) &rarr; ship it on a Delivery Note with tracking &rarr; bill it on a Sales Invoice &rarr; record the payment. At every step the <strong>Connections</strong> tab shows you where you are in the chain.</div>
+<a class="backtop" href="#top">&uarr; Back to top</a>
+
+<!-- ============ 13. FAQ ============ -->
+<h2 id="faq">13. Frequently asked questions</h2>
+
+<h3>How do I see goods that are in transit to a particular plant?</h3>
+<p>Each plant has a dedicated <strong>&ldquo;Goods In Transit&rdquo;</strong> warehouse (e.g. <code>Goods In Transit - KI</code>). When stock is moved between plants with a <strong>Material Transfer</strong>, it sits in that transit warehouse until it is received. To view it, open the <strong>Stock Balance</strong> report (or the <strong>Item Stock &amp; Open Orders</strong> report in the sidebar) and filter the Warehouse to <code>Goods In Transit - &lt;plant&gt;</code>; the <strong>Stock Ledger</strong> shows the movement history.</p>
+
+<h3>How do I know a Klemco order&rsquo;s goods are under production?</h3>
+<p>The <strong>Klemco (KM) Order status</strong> tracks it: <em>Draft &rarr; KM Confirmed &rarr; <strong>In Production</strong> &rarr; Inward Complete &rarr; Transfer Billing Done</em>. &ldquo;Under production&rdquo; means the KM Order is at <strong>In Production</strong>; once made, it moves to <strong>Inward Complete</strong> (goods in stock). Reach the KM Order from the Sales Order&rsquo;s <strong>Connections</strong> tab, or from <strong>All Klemco Orders</strong> in the sidebar.</p>
+
+<h3>Can I import a list of items and quantities from Excel into a Sales Order?</h3>
+<p><strong>Yes.</strong> The Sales Order <strong>items grid has Download / Upload</strong> buttons:</p>
+<ol class="steps">
+  <li>Click <strong>Download</strong> to get the template (CSV/XLSX).</li>
+  <li>Fill in <strong>Item Code</strong> and <strong>Qty</strong> (and optionally Rate, Warehouse).</li>
+  <li>Click <strong>Upload</strong> &mdash; the rows load into the grid.</li>
+</ol>
+<p>Also handy: <strong>Add multiple</strong> (pick many items at once), and the full <strong>Data Import</strong> tool for large bulk loads.</p>
+
+<h3>Can I bill items from different plants using the same Sales Order?</h3>
+<p><strong>Yes.</strong> One Sales Order can carry lines that ship from <strong>different warehouses/plants</strong> (each line has its own warehouse). From that single order you create <strong>multiple Delivery Notes</strong> (one per plant/warehouse) and <strong>multiple Sales Invoices</strong> &mdash; all linked back to the one Sales Order, which tracks delivered vs billed quantity per line.</p>
+<div class="warn"><strong>One company at a time:</strong> a single Sales Order / Delivery Note / Invoice belongs to <strong>one company</strong>. This works across <em>warehouses within the same company</em> (Klemco India has Stores, Finished Goods, Amritsar, Thane, Work in Progress, &hellip;). If a &ldquo;plant&rdquo; is a separate legal company, it needs its own Sales Order.</div>
+
 <a class="backtop" href="#top">&uarr; Back to top</a>
 
 <footer>
