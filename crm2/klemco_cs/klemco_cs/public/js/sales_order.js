@@ -35,6 +35,7 @@ frappe.ui.form.on('Sales Order', {
         _discount_approval_ui(frm);
         _credit_hold_ui(frm);
         _sitc_ui(frm);
+        _km_production_ui(frm);
     },
 
     onload(frm) {
@@ -92,6 +93,38 @@ function _connections_prefill(frm) {
         'Pick List': map(P + 'create_pick_list'),
         'Material Request': map(P + 'make_material_request'),
         'Project': map(P + 'make_project'),
+    });
+}
+
+// Show the linked Klemco (KM) Order production status right on the Sales Order — always live
+// (queried each refresh), so you can see "under production" without opening the Connections tab.
+// A single SO can spawn several KM Orders, so all are listed.
+function _km_production_ui(frm) {
+    if (frm.is_new()) return;
+    const COLOR = {
+        'Draft': 'gray', 'KM Confirmed': 'blue', 'In Production': 'orange',
+        'Inward Complete': 'green', 'Transfer Billing Done': 'green', 'Cancelled': 'red',
+    };
+    frappe.db.get_list('KM Order', {
+        filters: { linked_sales_order: frm.doc.name },
+        fields: ['name', 'status'],
+        order_by: 'creation',
+        limit: 20,
+    }).then(rows => {
+        rows = (rows || []).filter(r => r.status !== 'Cancelled');
+        if (!rows.length) return;
+        const badges = rows.map(r => {
+            const c = COLOR[r.status] || 'blue';
+            return `<span class="indicator-pill ${c}" style="margin-right:8px;">`
+                 + `${frappe.utils.escape_html(r.name)}: <b>${frappe.utils.escape_html(r.status)}</b></span>`;
+        }).join('');
+        frm.dashboard.set_headline_alert(
+            `<span style="margin-right:6px;">🏭 Klemco production:</span>${badges}`);
+        // one-click open of the linked KM order(s)
+        frm.add_custom_button(rows.length === 1 ? __('Klemco Order') : __('Klemco Orders'), () => {
+            if (rows.length === 1) frappe.set_route('Form', 'KM Order', rows[0].name);
+            else frappe.set_route('List', 'KM Order', { linked_sales_order: frm.doc.name });
+        }, __('View'));
     });
 }
 
