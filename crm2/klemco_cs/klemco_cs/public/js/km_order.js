@@ -6,6 +6,7 @@ frappe.ui.form.on('KM Order', {
                 frappe.set_route('Form', 'Sales Order', frm.doc.linked_sales_order);
             });
         }
+        _stage_button(frm);
         if (frm.is_new()) {
             const intro = frm.doc.linked_sales_order
                 ? __('Review the SO items and quantities below, then submit to "Confirm & Create KM Order" (FR-KM-08).')
@@ -65,6 +66,34 @@ frappe.ui.form.on('KM Order Item', {
         _flag_mismatches(frm);
     },
 });
+
+// Guided production lifecycle — one forward button for the next stage on a submitted order.
+// The Status field is read-only, so this is the only way to advance a KM Order through
+// In Production → Inward Complete → Transfer Billing Done (server enforces forward-only + roles).
+function _stage_button(frm) {
+    if (frm.doc.docstatus !== 1) return;
+    const NEXT = {
+        'KM Confirmed':   ['In Production',        __('Start Production')],
+        'In Production':  ['Inward Complete',      __('Mark Inward Complete')],
+        'Inward Complete':['Transfer Billing Done', __('Mark Transfer & Billing Done')],
+    };
+    const step = NEXT[frm.doc.status];
+    if (!step) return;  // final stage or cancelled — nothing to advance
+    const [next, label] = step;
+    frm.add_custom_button(label, () => {
+        frappe.confirm(__('Move this Klemco Order to "{0}"?', [next]), () => {
+            frappe.call({
+                method: 'klemco_cs.customer_service.doctype.km_order.km_order.advance_status',
+                args: { km_order: frm.doc.name, to_status: next },
+                freeze: true,
+                callback: () => {
+                    frappe.show_alert({ message: __('Production status: {0}', [next]), indicator: 'green' }, 5);
+                    frm.reload_doc();
+                },
+            });
+        });
+    });
+}
 
 function _flag_mismatches(frm) {
     // Only meaningful when the KM order was mapped from a parent Sales Order.

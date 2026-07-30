@@ -53,6 +53,32 @@ class KMOrder(Document):
         self.db_set("status", "Cancelled")
 
 
+# Production lifecycle after the order is confirmed (submitted). The plant advances the status
+# one forward stage at a time via the guided buttons on the form (km_order.js) — the Status field
+# itself is read-only, so there's no way to skip stages or move it backwards.
+KM_STATUS_FLOW = ["KM Confirmed", "In Production", "Inward Complete", "Transfer Billing Done"]
+KM_STATUS_ROLES = {"KM Plant Head", "CS Manager", "CS Supervisor", "System Manager"}
+
+
+@frappe.whitelist()
+def advance_status(km_order, to_status):
+    """Move a submitted KM Order to the NEXT production stage (forward-only, role-gated)."""
+    doc = frappe.get_doc("KM Order", km_order)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a submitted KM Order can be advanced."))
+    if not (KM_STATUS_ROLES & set(frappe.get_roles())):
+        frappe.throw(_("You are not permitted to advance the KM production status."))
+    if doc.status not in KM_STATUS_FLOW:
+        frappe.throw(_("Cannot advance from status {0}.").format(doc.status))
+    i = KM_STATUS_FLOW.index(doc.status)
+    nxt = KM_STATUS_FLOW[i + 1] if i + 1 < len(KM_STATUS_FLOW) else None
+    if to_status != nxt:
+        frappe.throw(_("The next step after {0} is {1}.").format(doc.status, nxt or _("(final)")))
+    doc.db_set("status", to_status)  # db_set persists on a submitted doc
+    doc.add_comment("Info", _("Production status: {0} → {1}").format(KM_STATUS_FLOW[i], to_status))
+    return to_status
+
+
 @frappe.whitelist()
 def make_km_order(source_name, target_doc=None):
     """Build a draft KM Order from a Sales Order for CS review (FR-KM-08)."""
