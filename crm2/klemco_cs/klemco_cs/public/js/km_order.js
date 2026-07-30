@@ -1,6 +1,11 @@
 // KM Order — client script (FR-KM-08 guided review)
 frappe.ui.form.on('KM Order', {
     refresh(frm) {
+        // Linked Sales Order picker shows only the entered customer's orders (when a customer is set;
+        // otherwise all, so the link-first flow — which then fills the customer — still works).
+        frm.set_query('linked_sales_order', () => ({
+            filters: frm.doc.customer ? { customer: frm.doc.customer } : {},
+        }));
         if (frm.doc.linked_sales_order) {
             frm.add_custom_button(__('View Full SO'), () => {
                 frappe.set_route('Form', 'Sales Order', frm.doc.linked_sales_order);
