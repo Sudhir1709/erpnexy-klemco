@@ -520,6 +520,15 @@ PROPERTY_SETTERS = [
      "property": "columns", "value": "1", "property_type": "Int"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "amount",
      "property": "columns", "value": "1", "property_type": "Int"},
+    # Per-line discount: surface ERPNext's own `discount_percentage` as an editable grid column so a
+    # discount can be customised per item (the header "Discount Threshold (%)" is only the approval CAP,
+    # BR-OE-01 — not a discount that gets applied). depends_on:price_list_rate stays, so it only appears
+    # once a priced item is on the row (safe — no discount against a ₹0 base). The CS client script still
+    # locks it read-only for RC (Rate Contract) customers (BR-SO-01). Width 1 → grid total 9 (≤10).
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "discount_percentage",
+     "property": "in_list_view", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "discount_percentage",
+     "property": "columns", "value": "1", "property_type": "Int"},
     # Dispatch & Tracking moved to the Delivery Note (warehouse captures it at dispatch) —
     # hide these on the Sales Order, which locks after submit. Client Order Confirmation stays.
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_docket_number",
