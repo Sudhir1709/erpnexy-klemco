@@ -529,6 +529,11 @@ PROPERTY_SETTERS = [
      "property": "in_list_view", "value": "1", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "discount_percentage",
      "property": "columns", "value": "1", "property_type": "Int"},
+    # Show the customer's PO number in the Sales Order list. in_list_view makes it an eligible
+    # column; _ensure_so_list_columns() positions it (2nd) via List View Settings, else at idx 205
+    # it renders last (off-screen behind the progress columns).
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "po_no",
+     "property": "in_list_view", "value": "1", "property_type": "Check"},
     # Dispatch & Tracking moved to the Delivery Note (warehouse captures it at dispatch) —
     # hide these on the Sales Order, which locks after submit. Client Order Confirmation stays.
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_docket_number",
@@ -648,10 +653,40 @@ def apply_customizations():
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     _apply_property_setters()
+    _ensure_so_list_columns()
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
     _ensure_sitc_item()
     frappe.clear_cache()
+
+
+# Sales Order list columns (order + selection). Frappe renders list columns in field order and
+# `po_no` sits last (idx 205), so a List View Settings.fields config is needed to place it up front.
+# Only fields with in_list_view=1 are eligible (see the po_no property setter above). Status uses the
+# sentinel fieldname "status_field"; the title field (customer_name) is the fixed subject and omitted.
+# % Amount Billed (per_billed) is dropped from the list to keep the row readable with PO added.
+SO_LIST_COLUMNS = [
+    {"label": "Status", "fieldname": "status_field"},
+    {"label": "Customer's Purchase Order", "fieldname": "po_no"},
+    {"label": "Delivery Date", "fieldname": "delivery_date"},
+    {"label": "Grand Total", "fieldname": "grand_total"},
+    {"label": "Discount Approval Status", "fieldname": "cs_discount_approval_status"},
+    {"label": "Credit Hold Status", "fieldname": "cs_credit_hold_status"},
+    {"label": "% Delivered", "fieldname": "per_delivered"},
+]
+
+
+def _ensure_so_list_columns():
+    """Put the customer's PO number on the Sales Order list, positioned right after Status."""
+    import json
+    fields = json.dumps(SO_LIST_COLUMNS)
+    if frappe.db.exists("List View Settings", "Sales Order"):
+        if frappe.db.get_value("List View Settings", "Sales Order", "fields") != fields:
+            frappe.db.set_value("List View Settings", "Sales Order", "fields", fields)
+    else:
+        frappe.get_doc({
+            "doctype": "List View Settings", "name": "Sales Order", "fields": fields,
+        }).insert(ignore_permissions=True)
 
 
 def _ensure_sitc_item():
