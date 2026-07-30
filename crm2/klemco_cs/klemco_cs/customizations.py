@@ -936,10 +936,13 @@ def _ensure_cs_sidebar_links():
 
 
 def _ensure_billing_controls():
-    """A Sales Invoice must originate from a Sales Order — no billing for un-ordered goods.
-    ERPNext enforces this via Selling Settings.so_required (so_dn_required); POS is exempt."""
-    if frappe.db.get_single_value("Selling Settings", "so_required") != "Yes":
-        frappe.db.set_single_value("Selling Settings", "so_required", "Yes")
+    """A Sales Invoice must originate from a Sales Order for GOODS — no billing for un-ordered
+    stock. Enforcement lives in klemco (events.sales_invoice._require_so_for_stock_items), which
+    requires an SO for stock items but exempts non-stock service/charge items (freight,
+    installation …) added at billing. ERPNext's own Selling Settings.so_required has no per-item
+    exemption, so it's turned OFF here in favour of the klemco gate."""
+    if frappe.db.get_single_value("Selling Settings", "so_required") != "No":
+        frappe.db.set_single_value("Selling Settings", "so_required", "No")
     _ensure_rcm_templates_disabled()
 
 
