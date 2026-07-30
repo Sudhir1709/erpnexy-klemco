@@ -1,0 +1,43 @@
+{
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "Customer Service",
+ "name": "CS Mandate Document",
+ "istable": 1,
+ "editable_grid": 1,
+ "creation": "2026-07-30 00:00:00",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "field_order": [
+  "document_type",
+  "file",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Customer PO Copy\nTest Certificate\nClient Order Confirmation\nOther",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 5
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Data",
+   "label": "Remarks",
+   "in_list_view": 1,
+   "columns": 2
+  }
+ ],
+ "permissions": []
+}

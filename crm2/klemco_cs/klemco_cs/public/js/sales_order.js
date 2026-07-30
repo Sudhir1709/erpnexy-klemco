@@ -36,6 +36,7 @@ frappe.ui.form.on('Sales Order', {
         _credit_hold_ui(frm);
         _sitc_ui(frm);
         _km_production_ui(frm);
+        _mandate_docs_ui(frm);
     },
 
     onload(frm) {
@@ -56,6 +57,38 @@ frappe.ui.form.on('Sales Order', {
         _client_validate_dates(frm);
     },
 });
+
+// Mandate Documents — "Upload Documents" button: pick a Type once, then select several files at
+// once; each uploaded file is added as a row in the cs_mandate_documents grid. (Manual "Add Row"
+// in the grid still works for one-offs.)
+function _mandate_docs_ui(frm) {
+    if (frm.is_new()) return;
+    frm.add_custom_button(__('Upload Documents'), () => {
+        frappe.prompt(
+            [{
+                fieldname: 'document_type', label: __('Document Type'), fieldtype: 'Select', reqd: 1,
+                options: ['Customer PO Copy', 'Test Certificate', 'Client Order Confirmation', 'Other'].join('\n'),
+                default: 'Customer PO Copy',
+            }],
+            ({ document_type }) => {
+                new frappe.ui.FileUploader({
+                    allow_multiple: true,
+                    doctype: frm.doctype,
+                    docname: frm.docname,
+                    folder: 'Home/Attachments',
+                    on_success(file_doc) {
+                        const row = frm.add_child('cs_mandate_documents', {
+                            document_type, file: file_doc.file_url,
+                        });
+                        frm.refresh_field('cs_mandate_documents');
+                        frm.dirty();
+                    },
+                });
+            },
+            __('Upload Documents'), __('Choose Files')
+        );
+    }, __('Documents'));
+}
 
 // SITC / Project order (usually carried from the quotation): drop in the ready-made lump-sum
 // "SITC Works (as per BOQ)" line if the grid is empty, so the order needs no 30-40 BOQ rows.

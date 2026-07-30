@@ -69,6 +69,21 @@ CUSTOM_FIELDS = {
             "collapsible": 1,
         },
         {
+            # Mandate Documents as a multi-file grid: one row per customer file, tagged by Type.
+            # Replaces the single-file cs_po_copy / cs_test_certificates / cs_client_order_confirmation
+            # Attach fields (hidden via property setters). allow_on_submit — POs/certs/confirmations
+            # can arrive after the order is submitted, and the DN auto-attach reads it post-submit.
+            "fieldname": "cs_mandate_documents",
+            "label": "Documents",
+            "fieldtype": "Table",
+            "options": "CS Mandate Document",
+            "insert_after": "cs_docs_section",
+            "allow_on_submit": 1,
+            "description": "Upload all customer-mandated documents (PO copies, test certificates, "
+                           "client order confirmation …) — add a row per file, or use the "
+                           "'Upload Documents' button to attach several at once.",
+        },
+        {
             "fieldname": "custom_preferred_3pl",
             "label": "Preferred 3PL",
             "fieldtype": "Select",
@@ -542,8 +557,18 @@ PROPERTY_SETTERS = [
      "property": "hidden", "value": "1", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_pod_attachment",
      "property": "hidden", "value": "1", "property_type": "Check"},
+    # Mandate Documents are now the multi-file cs_mandate_documents grid — hide the old single-file
+    # Attach fields and the (now empty) section that held Client Order Confirmation.
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_po_copy",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_col5",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_test_certificates",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_client_order_confirmation",
+     "property": "hidden", "value": "1", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "cs_dispatch_section",
-     "property": "label", "value": "Client Order Confirmation", "property_type": "Data"},
+     "property": "hidden", "value": "1", "property_type": "Check"},
     # Declutter the More Info tab — hide stock ERPNext sections Klemco doesn't use. Keep the Status
     # meters (% Delivered/Billed) and the Customer's PO No./Date under Additional Info.
     #   Auto Repeat (recurring/subscription orders)
