@@ -158,6 +158,8 @@ def make_km_order(source_name, target_doc=None):
     def set_missing(source, target):
         target.linked_sales_order = source.name
         target.customer = source.customer
+        # Carry the customer's required delivery date so the plant can plan production against it.
+        target.km_delivery_date = source.delivery_date
 
     def update_item(source_row, target_row, source_parent):
         # KM qty defaults to the SO qty; CS reviews/edits before confirming.

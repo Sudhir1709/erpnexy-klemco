@@ -34,6 +34,8 @@ frappe.ui.form.on('KM Order', {
         const pull = () => {
             frappe.db.get_doc('Sales Order', frm.doc.linked_sales_order).then(so => {
                 if (so.customer) frm.set_value('customer', so.customer);
+                // Carry the SO's delivery date so the plant can plan production against it.
+                if (so.delivery_date) frm.set_value('km_delivery_date', so.delivery_date);
                 frm.clear_table('items');
                 (so.items || []).forEach(it => {
                     const row = frm.add_child('items');
