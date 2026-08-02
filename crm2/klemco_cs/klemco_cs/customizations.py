@@ -694,7 +694,19 @@ def apply_customizations():
     _ensure_proforma_print_formats()
     _ensure_sitc_item()
     _ensure_km_supplier()
+    _ensure_quotation_override()
     frappe.clear_cache()
+
+
+def _ensure_quotation_override():
+    """A Quotation is a non-binding estimate — a Sales Order may override its quantity and rate.
+    - over_delivery_receipt_allowance high ⇒ SO qty is never blocked against the quoted qty (this shared
+      Stock Settings knob also loosens DN over-delivery / PR over-receipt, both bounded by the stock guard).
+    - maintain_same_sales_rate off ⇒ the SO rate can differ from the quotation."""
+    if frappe.db.get_single_value("Stock Settings", "over_delivery_receipt_allowance") != 100000:
+        frappe.db.set_single_value("Stock Settings", "over_delivery_receipt_allowance", 100000)
+    if frappe.db.get_single_value("Selling Settings", "maintain_same_sales_rate"):
+        frappe.db.set_single_value("Selling Settings", "maintain_same_sales_rate", 0)
 
 
 def _ensure_km_supplier():
