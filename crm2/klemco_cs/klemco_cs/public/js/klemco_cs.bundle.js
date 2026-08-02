@@ -2,6 +2,23 @@
 // Loaded on every desk page (app_include_js) and injectable into the CRM SPA.
 // Talks to klemco_cs.ai_assistant.api.{chat,status,confirm_create}.
 (function () {
+  // Colour the Connections-tab count badges so linked documents stand out. Frappe un-hides a
+  // connection's `.count` only when it has linked docs, so `.count:not(.hidden)` == "has documents".
+  (function connectionsBadgeCSS() {
+    if (document.getElementById("klemco-connections-css")) return;
+    const s = document.createElement("style");
+    s.id = "klemco-connections-css";
+    s.textContent = `
+      .document-link-badge .count:not(.hidden){
+        background:#1A5276 !important; color:#fff !important;
+        border-radius:8px; padding:0 6px; font-weight:600;
+      }
+      .document-link:has(.count:not(.hidden)) .badge-link{
+        color:#1A5276 !important; font-weight:600;
+      }`;
+    (document.head || document.documentElement).appendChild(s);
+  })();
+
   if (window.__klemcoAIWidget) return;
   window.__klemcoAIWidget = true;
 
