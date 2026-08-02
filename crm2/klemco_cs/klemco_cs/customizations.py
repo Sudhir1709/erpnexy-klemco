@@ -518,7 +518,7 @@ PROPERTY_SETTERS = [
     # amount) at their default widths the total exceeds the budget and UOM was being squeezed
     # out of the rendered grid. These widths sum to 10 so every column (incl. UOM) shows.
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "item_code",
-     "property": "columns", "value": "2", "property_type": "Int"},
+     "property": "columns", "value": "3", "property_type": "Int"},
     {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "delivery_date",
      "property": "columns", "value": "2", "property_type": "Int"},
     # Required Delivery Date removed — redundant with the standard per-line Delivery Date (which is also
