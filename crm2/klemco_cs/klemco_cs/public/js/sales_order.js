@@ -152,7 +152,7 @@ function _km_production_ui(frm) {
                  + `${frappe.utils.escape_html(r.name)}: <b>${frappe.utils.escape_html(r.status)}</b></span>`;
         }).join('');
         frm.dashboard.set_headline_alert(
-            `<span style="margin-right:6px;">🏭 Klemco production:</span>${badges}`);
+            `<span style="margin-right:6px;">🏭 Plant production:</span>${badges}`);
         // one-click open of the linked KM order(s)
         frm.add_custom_button(rows.length === 1 ? __('Klemco Order') : __('Klemco Orders'), () => {
             if (rows.length === 1) frappe.set_route('Form', 'KM Order', rows[0].name);

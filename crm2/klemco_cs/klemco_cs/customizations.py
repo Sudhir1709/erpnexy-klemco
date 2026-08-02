@@ -695,7 +695,33 @@ def apply_customizations():
     _ensure_sitc_item()
     _ensure_km_supplier()
     _ensure_quotation_override()
+    _ensure_plant_order_labels()
     frappe.clear_cache()
+
+
+# Relabel "KM / Klemco Order" → "Plant Order" across the desk via Translation records. The internal
+# DocType stays "KM Order" (table, code, links, method paths unchanged), so nothing breaks — only the
+# display text is relabelled anywhere it passes through __() / _().
+PLANT_ORDER_LABELS = {
+    "KM Order": "Plant Order",
+    "KM Orders": "Plant Orders",
+    "KM Order Item": "Plant Order Item",
+    "Klemco Order": "Plant Order",
+    "Klemco Orders": "Plant Orders",
+    "New Klemco Order": "New Plant Order",
+    "All Klemco Orders": "All Plant Orders",
+    "Klemco Orders — Created": "Plant Orders — Created",
+    "Klemco production": "Plant production",
+}
+
+
+def _ensure_plant_order_labels():
+    for src, tgt in PLANT_ORDER_LABELS.items():
+        if not frappe.db.exists("Translation", {"source_text": src, "language": "en"}):
+            frappe.get_doc({
+                "doctype": "Translation", "language": "en",
+                "source_text": src, "translated_text": tgt,
+            }).insert(ignore_permissions=True)
 
 
 def _ensure_quotation_override():

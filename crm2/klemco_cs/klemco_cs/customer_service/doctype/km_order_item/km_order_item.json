@@ -11,6 +11,7 @@
  "field_order": [
   "item_code",
   "item_name",
+  "delivery_date",
   "so_qty",
   "km_qty",
   "uom",
@@ -24,7 +25,7 @@
    "options": "Item",
    "reqd": 1,
    "in_list_view": 1,
-   "columns": 3
+   "columns": 2
   },
   {
    "fieldname": "item_name",
@@ -33,7 +34,15 @@
    "fetch_from": "item_code.item_name",
    "read_only": 1,
    "in_list_view": 1,
-   "columns": 3
+   "columns": 2
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date",
+   "description": "Required delivery date for this line (from the Sales Order line). Plan production against this.",
+   "in_list_view": 1,
+   "columns": 2
   },
   {
    "fieldname": "so_qty",

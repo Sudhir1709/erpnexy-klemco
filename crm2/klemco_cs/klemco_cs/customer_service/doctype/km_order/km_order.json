@@ -30,8 +30,8 @@
    "fieldname": "naming_series",
    "fieldtype": "Series",
    "label": "Series",
-   "options": "KMPO-.YYYY.-",
-   "default": "KMPO-.YYYY.-",
+   "options": "PLO-.YYYY.-",
+   "default": "PLO-.YYYY.-",
    "reqd": 0
   },
   {
@@ -82,9 +82,9 @@
   {
    "fieldname": "km_delivery_date",
    "fieldtype": "Date",
-   "label": "Delivery Date",
-   "description": "Customer's required delivery date (from the Sales Order) — plan production against this.",
-   "in_list_view": 1
+   "label": "Delivery Date (overall)",
+   "description": "Superseded by the per-line Delivery Date on each item. Kept for existing orders.",
+   "hidden": 1
   },
   {
    "fieldname": "transfer_billing_status",

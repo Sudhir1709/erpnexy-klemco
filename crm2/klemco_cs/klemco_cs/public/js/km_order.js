@@ -23,8 +23,8 @@ frappe.ui.form.on('KM Order', {
         }
         if (frm.is_new()) {
             const intro = frm.doc.linked_sales_order
-                ? __('Review the SO items and quantities below, then submit to "Confirm & Create KM Order" (FR-KM-08).')
-                : __('Standalone Klemco Order: select the customer and add items, then submit to "Confirm & Create KM Order". Optionally link a parent Sales Order to pull its items.');
+                ? __('Review the SO items and quantities below, then submit to "Confirm & Create Plant Order" (FR-KM-08).')
+                : __('Standalone Plant Order: select the customer and add items, then submit to "Confirm & Create Plant Order". Optionally link a parent Sales Order to pull its items.');
             frm.set_intro(intro, 'orange');
         }
         _flag_mismatches(frm);
@@ -53,6 +53,7 @@ frappe.ui.form.on('KM Order', {
                     row.so_qty = it.qty;
                     row.km_qty = it.qty;
                     row.uom = it.uom;
+                    row.delivery_date = it.delivery_date;  // per-line required date for planning
                     row.matches_so = 1;
                 });
                 frm.refresh_field('items');
@@ -103,7 +104,7 @@ function _stage_button(frm) {
     };
     frm.add_custom_button(label, () => {
         const note = STOCK_NOTE[next] ? '<br><span class="text-muted">' + STOCK_NOTE[next] + '</span>' : '';
-        frappe.confirm(__('Move this Klemco Order to "{0}"?', [next]) + note, () => {
+        frappe.confirm(__('Move this Plant Order to "{0}"?', [next]) + note, () => {
             frappe.call({
                 method: 'klemco_cs.customer_service.doctype.km_order.km_order.advance_status',
                 args: { km_order: frm.doc.name, to_status: next },
@@ -124,7 +125,7 @@ function _flag_mismatches(frm) {
     if (mismatched.length) {
         frm.dashboard.clear_comment();
         frm.dashboard.set_headline_alert(
-            __('{0} line(s) differ from the SO quantity — confirm this is intentional before creating the KM order.',
+            __('{0} line(s) differ from the SO quantity — confirm this is intentional before creating the Plant Order.',
                [mismatched.length]),
             'orange'
         );

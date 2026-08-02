@@ -11,6 +11,12 @@ from frappe.model.mapper import get_mapped_doc
 
 
 class KMOrder(Document):
+    def before_insert(self):
+        # Frappe's new_doc/server-side inserts don't default a Series field, so a programmatic
+        # insert can miss naming_series (the UI form sets it). Default it so autoname never fails.
+        if not self.get("naming_series"):
+            self.naming_series = "PLO-.YYYY.-"
+
     def validate(self):
         # A KM (Klemco) Order may be raised standalone or from a parent Sales Order.
         # When linked to an SO, the customer is derived from it; otherwise it must be
@@ -21,7 +27,7 @@ class KMOrder(Document):
             frappe.throw(_("Select a Customer, or link a parent Sales Order to derive it."))
 
         if not self.items:
-            frappe.throw(_("Add at least one item to the KM Order."))
+            frappe.throw(_("Add at least one item to the Plant Order."))
 
         for row in self.items:
             # so_qty is only meaningful when the KM order was mapped from an SO.
@@ -33,7 +39,7 @@ class KMOrder(Document):
             if not frappe.db.exists("Item", row.item_code):
                 frappe.throw(_(
                     "Row #{0}: Item {1} is not in the KM master. Create it via the New Item "
-                    "workflow (triple approval, BR-KM-02) before raising the KM order."
+                    "workflow (triple approval, BR-KM-02) before raising the Plant Order."
                 ).format(row.idx, row.item_code))
 
             km_managed, status = frappe.db.get_value(
@@ -84,9 +90,9 @@ def advance_status(km_order, to_status):
     status is left untouched."""
     doc = frappe.get_doc("KM Order", km_order)
     if doc.docstatus != 1:
-        frappe.throw(_("Only a submitted KM Order can be advanced."))
+        frappe.throw(_("Only a submitted Plant Order can be advanced."))
     if not (KM_STATUS_ROLES & set(frappe.get_roles())):
-        frappe.throw(_("You are not permitted to advance the KM production status."))
+        frappe.throw(_("You are not permitted to advance the Plant production status."))
     if doc.status not in KM_STATUS_FLOW:
         frappe.throw(_("Cannot advance from status {0}.").format(doc.status))
     i = KM_STATUS_FLOW.index(doc.status)
@@ -131,7 +137,7 @@ def _post_stock_entry(doc, entry_type, source_wh, target_wh):
         se.from_warehouse = source_wh
     if target_wh:
         se.to_warehouse = target_wh
-    se.remarks = _("Auto-posted from Klemco Order {0} ({1}).").format(doc.name, entry_type)
+    se.remarks = _("Auto-posted from Plant Order {0} ({1}).").format(doc.name, entry_type)
     for it in rows:
         row = se.append("items", {})
         row.item_code = it.item_code
@@ -174,17 +180,17 @@ def make_purchase_bill(source_name, target_doc=None):
     Sales Invoice at the sales rate. Opened for review via open_mapped_doc."""
     doc = frappe.get_doc("KM Order", source_name)
     if doc.docstatus != 1:
-        frappe.throw(_("Submit the KM Order before generating its purchase bill."))
+        frappe.throw(_("Submit the Plant Order before generating its purchase bill."))
 
     supplier = doc.get("supplier") or KM_DEFAULT_SUPPLIER
     if not frappe.db.exists("Supplier", supplier):
-        frappe.throw(_("Supplier {0} not found — set a Manufacturing Supplier on the KM Order.").format(supplier))
+        frappe.throw(_("Supplier {0} not found — set a Manufacturing Supplier on the Plant Order.").format(supplier))
 
     pi = frappe.new_doc("Purchase Invoice")
     pi.supplier = supplier
     pi.company = KM_COMPANY
     pi.update_stock = 0  # financial bill only — the KM stages already moved the stock
-    pi.remarks = _("Auto-generated from Klemco Order {0} (purchase rate).").format(doc.name)
+    pi.remarks = _("Auto-generated from Plant Order {0} (purchase rate).").format(doc.name)
 
     missing = []
     for it in doc.items:
@@ -224,6 +230,7 @@ def make_km_order(source_name, target_doc=None):
         target_row.so_qty = source_row.qty
         target_row.km_qty = source_row.qty
         target_row.uom = source_row.uom
+        target_row.delivery_date = source_row.delivery_date  # per-line required date for planning
         target_row.matches_so = 1
 
     doc = get_mapped_doc(
