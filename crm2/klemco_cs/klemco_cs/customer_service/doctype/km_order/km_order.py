@@ -151,6 +151,64 @@ def _post_stock_entry(doc, entry_type, source_wh, target_wh):
     return se.name
 
 
+KM_PURCHASE_PRICE_LIST = "Standard Buying"
+KM_DEFAULT_SUPPLIER = "Klemco Manufacturing"
+
+
+def _km_purchase_rate(item_code):
+    """The item's purchase rate = its most recent Standard Buying price. None if not defined."""
+    rows = frappe.get_all(
+        "Item Price",
+        filters={"item_code": item_code, "price_list": KM_PURCHASE_PRICE_LIST},
+        fields=["price_list_rate"],
+        order_by="valid_from desc, modified desc",
+        limit=1,
+    )
+    return rows[0].price_list_rate if rows else None
+
+
+@frappe.whitelist()
+def make_purchase_bill(source_name, target_doc=None):
+    """Build a draft Purchase Invoice for a KM Order, priced at each item's PURCHASE rate
+    (Standard Buying) — the cost bill for producing/procuring, distinct from the customer's
+    Sales Invoice at the sales rate. Opened for review via open_mapped_doc."""
+    doc = frappe.get_doc("KM Order", source_name)
+    if doc.docstatus != 1:
+        frappe.throw(_("Submit the KM Order before generating its purchase bill."))
+
+    supplier = doc.get("supplier") or KM_DEFAULT_SUPPLIER
+    if not frappe.db.exists("Supplier", supplier):
+        frappe.throw(_("Supplier {0} not found — set a Manufacturing Supplier on the KM Order.").format(supplier))
+
+    pi = frappe.new_doc("Purchase Invoice")
+    pi.supplier = supplier
+    pi.company = KM_COMPANY
+    pi.update_stock = 0  # financial bill only — the KM stages already moved the stock
+    pi.remarks = _("Auto-generated from Klemco Order {0} (purchase rate).").format(doc.name)
+
+    missing = []
+    for it in doc.items:
+        if not it.item_code or (it.km_qty or 0) <= 0:
+            continue
+        rate = _km_purchase_rate(it.item_code)
+        if rate is None:
+            missing.append(it.item_code)
+            continue
+        row = pi.append("items", {})
+        row.item_code = it.item_code
+        row.qty = it.km_qty
+        row.uom = it.uom
+        row.rate = rate
+        row.price_list_rate = rate
+
+    if missing:
+        frappe.throw(_(
+            "Set a Purchase rate ({0} price) for: {1} — then generate the bill."
+        ).format(KM_PURCHASE_PRICE_LIST, ", ".join(dict.fromkeys(missing))))
+
+    return pi
+
+
 @frappe.whitelist()
 def make_km_order(source_name, target_doc=None):
     """Build a draft KM Order from a Sales Order for CS review (FR-KM-08)."""

@@ -693,7 +693,30 @@ def apply_customizations():
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
     _ensure_sitc_item()
+    _ensure_km_supplier()
     frappe.clear_cache()
+
+
+def _ensure_km_supplier():
+    """Default supplier billed for a KM (manufacturing) order's purchase bill."""
+    name = "Klemco Manufacturing"
+    if frappe.db.exists("Supplier", name):
+        return
+    group = None
+    for g in ("Local", "Raw Material", "Services"):
+        if frappe.db.exists("Supplier Group", g):
+            group = g
+            break
+    if not group:
+        picks = frappe.get_all("Supplier Group", filters={"is_group": 0}, limit=1, pluck="name")
+        group = picks[0] if picks else "All Supplier Groups"
+    frappe.get_doc({
+        "doctype": "Supplier",
+        "supplier_name": name,
+        "supplier_group": group,
+        "country": "India",
+        "gst_category": "Unregistered",
+    }).insert(ignore_permissions=True)
 
 
 # Sales Order list columns (order + selection). Frappe renders list columns in field order and

@@ -12,6 +12,15 @@ frappe.ui.form.on('KM Order', {
             });
         }
         _stage_button(frm);
+        // Generate the KM order's purchase bill (Purchase Invoice at the item PURCHASE rate).
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('Generate Purchase Bill'), () => {
+                frappe.model.open_mapped_doc({
+                    method: 'klemco_cs.customer_service.doctype.km_order.km_order.make_purchase_bill',
+                    frm: frm,
+                });
+            }, __('Create'));
+        }
         if (frm.is_new()) {
             const intro = frm.doc.linked_sales_order
                 ? __('Review the SO items and quantities below, then submit to "Confirm & Create KM Order" (FR-KM-08).')
