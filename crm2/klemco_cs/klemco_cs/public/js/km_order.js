@@ -97,13 +97,11 @@ function _stage_button(frm) {
     const step = NEXT[frm.doc.status];
     if (!step) return;  // final stage or cancelled — nothing to advance
     const [next, label] = step;
-    // Stages that also post a stock movement — spell it out in the confirm prompt.
-    const STOCK_NOTE = {
-        'Inward Complete': __('This will receive the produced quantities into Finished Goods stock.'),
-        'Transfer Billing Done': __('This will transfer the goods from Finished Goods to the dispatch store.'),
-    };
+    // Stages only track status — the goods enter Finished Goods via the Generate Purchase Bill.
+    const note = next === 'Transfer Billing Done'
+        ? '<br><span class="text-muted">' + __('Generate the Purchase Bill to add the goods to Finished Goods at cost.') + '</span>'
+        : '';
     frm.add_custom_button(label, () => {
-        const note = STOCK_NOTE[next] ? '<br><span class="text-muted">' + STOCK_NOTE[next] + '</span>' : '';
         frappe.confirm(__('Move this Plant Order to "{0}"?', [next]) + note, () => {
             frappe.call({
                 method: 'klemco_cs.customer_service.doctype.km_order.km_order.advance_status',

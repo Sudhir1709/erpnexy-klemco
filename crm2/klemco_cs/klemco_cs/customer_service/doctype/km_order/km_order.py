@@ -65,13 +65,11 @@ class KMOrder(Document):
 KM_STATUS_FLOW = ["KM Confirmed", "In Production", "Inward Complete", "Transfer Billing Done"]
 KM_STATUS_ROLES = {"KM Plant Head", "CS Manager", "CS Supervisor", "System Manager"}
 
-# Stock routing for the KM production flow (single company — the goods are produced by Klemco and
-# received into Klemco stock; customer billing stays on the parent SO → DN → SI flow):
-#   Inward Complete       → Material Receipt of the produced qty into the finished-goods warehouse
-#   Transfer Billing Done → Material Transfer finished-goods → dispatch store (plant-to-store handover)
+# Stock model: the goods enter Klemco stock when the PURCHASE BILL is done (bill = receipt) — the
+# Generate Purchase Bill posts a Purchase Invoice that receives the produced qty into Finished Goods
+# at the purchase rate. The production stages below only track status (they move no stock).
 KM_COMPANY = "Klemco India"
 KM_RECEIVE_WAREHOUSE = "Finished Goods - KI"
-KM_DISPATCH_WAREHOUSE = "Stores - KI"
 
 # transfer_billing_status reflects where the order is in the inward/transfer sub-flow.
 KM_TB_STATUS = {
@@ -85,9 +83,8 @@ KM_TB_STATUS = {
 def advance_status(km_order, to_status):
     """Move a submitted KM Order to the NEXT production stage (forward-only, role-gated).
 
-    Inward Complete and Transfer Billing Done also post the matching Stock Entry — built and
-    SUBMITTED *before* the status flips, so a stock failure aborts the whole advance and the
-    status is left untouched."""
+    Status-only: the stages move no stock — the goods enter Finished Goods when the purchase bill
+    is submitted (see make_purchase_bill)."""
     doc = frappe.get_doc("KM Order", km_order)
     if doc.docstatus != 1:
         frappe.throw(_("Only a submitted Plant Order can be advanced."))
@@ -100,61 +97,11 @@ def advance_status(km_order, to_status):
     if to_status != nxt:
         frappe.throw(_("The next step after {0} is {1}.").format(doc.status, nxt or _("(final)")))
 
-    se_name = None
-    if to_status == "Inward Complete":
-        se_name = _post_stock_entry(doc, "Material Receipt", None, KM_RECEIVE_WAREHOUSE)
-    elif to_status == "Transfer Billing Done":
-        se_name = _post_stock_entry(doc, "Material Transfer", KM_RECEIVE_WAREHOUSE, KM_DISPATCH_WAREHOUSE)
-
     doc.db_set("status", to_status)  # db_set persists on a submitted doc
     if to_status in KM_TB_STATUS:
         doc.db_set("transfer_billing_status", KM_TB_STATUS[to_status])
-    msg = _("Production status: {0} → {1}").format(KM_STATUS_FLOW[i], to_status)
-    if se_name:
-        msg += _(" — Stock Entry {0}").format(se_name)
-    doc.add_comment("Info", msg)
+    doc.add_comment("Info", _("Production status: {0} → {1}").format(KM_STATUS_FLOW[i], to_status))
     return to_status
-
-
-def _km_stock_rows(doc):
-    """Stock (inventory) lines with a positive KM qty — services are not received into stock."""
-    return [
-        it for it in doc.items
-        if it.item_code and (it.km_qty or 0) > 0
-        and frappe.get_cached_value("Item", it.item_code, "is_stock_item")
-    ]
-
-
-def _post_stock_entry(doc, entry_type, source_wh, target_wh):
-    """Create + submit a Material Receipt / Material Transfer for the KM order's produced qty."""
-    rows = _km_stock_rows(doc)
-    if not rows:
-        return None  # e.g. a services-only KM order — nothing to move
-    se = frappe.new_doc("Stock Entry")
-    se.stock_entry_type = entry_type
-    se.company = KM_COMPANY
-    if source_wh:
-        se.from_warehouse = source_wh
-    if target_wh:
-        se.to_warehouse = target_wh
-    se.remarks = _("Auto-posted from Plant Order {0} ({1}).").format(doc.name, entry_type)
-    for it in rows:
-        row = se.append("items", {})
-        row.item_code = it.item_code
-        row.qty = it.km_qty
-        row.uom = it.uom
-        row.conversion_factor = 1
-        if source_wh:
-            row.s_warehouse = source_wh
-        if target_wh:
-            row.t_warehouse = target_wh
-        if entry_type == "Material Receipt":
-            vr = frappe.db.get_value("Item", it.item_code, "valuation_rate") or 0
-            row.basic_rate = vr
-            row.allow_zero_valuation_rate = 0 if vr else 1
-    se.insert(ignore_permissions=True)
-    se.submit()
-    return se.name
 
 
 KM_PURCHASE_PRICE_LIST = "Standard Buying"
@@ -175,9 +122,10 @@ def _km_purchase_rate(item_code):
 
 @frappe.whitelist()
 def make_purchase_bill(source_name, target_doc=None):
-    """Build a draft Purchase Invoice for a KM Order, priced at each item's PURCHASE rate
-    (Standard Buying) — the cost bill for producing/procuring, distinct from the customer's
-    Sales Invoice at the sales rate. Opened for review via open_mapped_doc."""
+    """Build a draft Purchase Invoice for a KM Order that RECEIVES the goods into Finished Goods at
+    the PURCHASE rate (Standard Buying) — the bill IS the receipt: submitting it adds the produced
+    qty to Finished Goods stock at cost AND records the payable to the plant supplier, in one linked
+    document. Distinct from the customer's Sales Invoice at the sales rate. Opened via open_mapped_doc."""
     doc = frappe.get_doc("KM Order", source_name)
     if doc.docstatus != 1:
         frappe.throw(_("Submit the Plant Order before generating its purchase bill."))
@@ -189,8 +137,10 @@ def make_purchase_bill(source_name, target_doc=None):
     pi = frappe.new_doc("Purchase Invoice")
     pi.supplier = supplier
     pi.company = KM_COMPANY
-    pi.update_stock = 0  # financial bill only — the KM stages already moved the stock
-    pi.remarks = _("Auto-generated from Plant Order {0} (purchase rate).").format(doc.name)
+    pi.update_stock = 1  # bill = receipt: goods enter Finished Goods on submit
+    pi.set_warehouse = KM_RECEIVE_WAREHOUSE
+    pi.remarks = _("Auto-generated from Plant Order {0} — receives goods into {1} at purchase rate.").format(
+        doc.name, KM_RECEIVE_WAREHOUSE)
 
     missing = []
     for it in doc.items:
@@ -206,6 +156,8 @@ def make_purchase_bill(source_name, target_doc=None):
         row.uom = it.uom
         row.rate = rate
         row.price_list_rate = rate
+        if frappe.get_cached_value("Item", it.item_code, "is_stock_item"):
+            row.warehouse = KM_RECEIVE_WAREHOUSE
 
     if missing:
         frappe.throw(_(
