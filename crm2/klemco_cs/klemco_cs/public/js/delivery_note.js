@@ -8,9 +8,18 @@ frappe.ui.form.on('Delivery Note', {
             frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
         }
         if (frm.is_new()) return;
+        frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice (Delivery Note)'));
         _render_test_certificates(frm);
     },
 });
+
+// Open the print view of this document with the given (Proforma) print format preselected.
+function _open_proforma(frm, format_name) {
+    const url = '/printview?doctype=' + encodeURIComponent(frm.doctype) +
+        '&name=' + encodeURIComponent(frm.doc.name) +
+        '&format=' + encodeURIComponent(format_name) + '&no_letterhead=0';
+    window.open(url, '_blank');
+}
 
 // Create a new Shipping address for the customer (quick-entry) and set it on this document.
 function _new_delivery_address(frm) {

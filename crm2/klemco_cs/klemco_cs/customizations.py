@@ -365,6 +365,14 @@ PROPERTY_SETTERS = [
         "value": "Delivery Challan",
         "property_type": "Data",
     },
+    {
+        # Plant Order prints the plain "Plant Order" layout (items/qty/dates, no pricing) by default.
+        "doctype_or_field": "DocType",
+        "doctype": "KM Order",
+        "property": "default_print_format",
+        "value": "Plant Order",
+        "property_type": "Data",
+    },
     # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
     # real category from the GSTIN on save — it stays Registered when a GSTIN is entered, and reverts
     # to Unregistered (India) / Overseas gracefully when there's none (no validation error).
@@ -688,10 +696,12 @@ def apply_customizations():
     _ensure_worklist_reports()
     _ensure_cs_sidebar_links()
     create_custom_fields(CUSTOM_FIELDS, update=True)
-    _apply_property_setters()
-    _ensure_so_list_columns()
+    # Print formats first — a `default_print_format` property setter is skipped if its format
+    # doesn't exist yet (see _apply_property_setters), so create them before applying setters.
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
+    _apply_property_setters()
+    _ensure_so_list_columns()
     _ensure_sitc_item()
     _ensure_km_supplier()
     _ensure_quotation_override()
@@ -1216,7 +1226,7 @@ PROFORMA_HTML = """
   </td>
   <td style="vertical-align:top;text-align:right;">
     <strong>{{ doc.name }}</strong><br>
-    Date: {{ frappe.format(doc.transaction_date, {"fieldtype":"Date"}) }}
+    Date: {{ frappe.format(doc.get("transaction_date") or doc.get("posting_date"), {"fieldtype":"Date"}) }}
   </td>
 </tr></table>
 <table style="width:100%;font-size:12px;margin-bottom:8px;"><tr>
@@ -1262,7 +1272,49 @@ PROFORMA_HTML = """
 PROFORMA_FORMATS = {
     "Proforma Invoice": "Sales Order",
     "Proforma Invoice (Quotation)": "Quotation",
+    "Proforma Invoice (Delivery Note)": "Delivery Note",
+    "Proforma Invoice (Sales Invoice)": "Sales Invoice",
 }
+
+# Plain printout for a Plant Order (no customer pricing on its lines — items/qty/dates only).
+PLANT_ORDER_HTML = """
+<div style="text-align:center;margin-bottom:6px;">
+  <h2 style="margin:0;letter-spacing:1px;">PLANT ORDER</h2>
+</div>
+<table style="width:100%;font-size:12px;margin-bottom:8px;"><tr>
+  <td style="vertical-align:top;">
+    <strong>{{ doc.name }}</strong><br>
+    Customer: {{ doc.customer or "" }}<br>
+    Supplier: {{ doc.supplier or "" }}
+  </td>
+  <td style="vertical-align:top;text-align:right;">
+    Linked Sales Order: {{ doc.linked_sales_order or "-" }}<br>
+    Goods Available Date: {{ frappe.format(doc.km_tat_date, {"fieldtype":"Date"}) if doc.km_tat_date else "-" }}<br>
+    Status: {{ doc.status }}
+  </td>
+</tr></table>
+<table class="table table-bordered" style="font-size:12px;">
+  <thead><tr>
+    <th>#</th><th>Item</th><th>Item Name</th><th>Delivery Date</th>
+    <th class="text-right">Qty</th><th>UOM</th>
+  </tr></thead>
+  <tbody>
+  {% for row in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ row.item_code }}</td>
+      <td>{{ row.item_name }}</td>
+      <td>{{ frappe.format(row.delivery_date, {"fieldtype":"Date"}) if row.delivery_date else "-" }}</td>
+      <td class="text-right">{{ row.km_qty }}</td>
+      <td>{{ row.uom }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p style="font-size:11px;color:#666;margin-top:14px;border-top:1px solid #ddd;padding-top:6px;">
+  Internal Plant Order — production instruction. Not a customer invoice.
+</p>
+""".strip()
 
 
 def _ensure_proforma_print_formats():
@@ -1278,4 +1330,16 @@ def _ensure_proforma_print_formats():
             "custom_format": 1,
             "print_format_type": "Jinja",
             "html": PROFORMA_HTML,
+        }).insert(ignore_permissions=True)
+    # Plant Order printout (no pricing) + make it the default print for a Plant Order.
+    if not frappe.db.exists("Print Format", "Plant Order"):
+        frappe.get_doc({
+            "doctype": "Print Format",
+            "name": "Plant Order",
+            "doc_type": "KM Order",
+            "module": "Customer Service",
+            "standard": "No",
+            "custom_format": 1,
+            "print_format_type": "Jinja",
+            "html": PLANT_ORDER_HTML,
         }).insert(ignore_permissions=True)

@@ -12,6 +12,9 @@ frappe.ui.form.on('Sales Invoice', {
         if (frm.doc.customer) {
             frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
         }
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice (Sales Invoice)'));
+        }
     },
 
     customer(frm) {
@@ -42,6 +45,14 @@ frappe.ui.form.on('Sales Invoice', {
 });
 
 // Create a new Shipping address for the customer (quick-entry) and set it on this invoice.
+// Open the print view of this document with the given (Proforma) print format preselected.
+function _open_proforma(frm, format_name) {
+    const url = '/printview?doctype=' + encodeURIComponent(frm.doctype) +
+        '&name=' + encodeURIComponent(frm.doc.name) +
+        '&format=' + encodeURIComponent(format_name) + '&no_letterhead=0';
+    window.open(url, '_blank');
+}
+
 function _new_delivery_address(frm) {
     frappe.ui.form.make_quick_entry(
         'Address',
