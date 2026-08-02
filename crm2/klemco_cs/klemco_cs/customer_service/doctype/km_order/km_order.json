@@ -76,7 +76,9 @@
   {
    "fieldname": "km_tat_date",
    "fieldtype": "Date",
-   "label": "KM TAT Date",
+   "label": "Goods Available Date",
+   "description": "Plant enters the date the goods will be available after production.",
+   "allow_on_submit": 1,
    "in_list_view": 1
   },
   {
