@@ -365,6 +365,17 @@ PROPERTY_SETTERS = [
         "value": "Delivery Challan",
         "property_type": "Data",
     },
+    # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
+    # real category from the GSTIN on save — it stays Registered when a GSTIN is entered, and reverts
+    # to Unregistered (India) / Overseas gracefully when there's none (no validation error).
+    {
+        "doctype_or_field": "Field",
+        "doctype": "Address",
+        "fieldname": "gst_category",
+        "property": "default",
+        "value": "Registered Regular",
+        "property_type": "Text",
+    },
     # KM Order: clear the title field so the order number (KMPO-…) is the clickable link in the list
     # (Frappe uses `name` as the subject link when there's no title_field). Customer stays a column.
     {
