@@ -922,20 +922,24 @@ def _ensure_ic_stock_entry_taxes_field():
 # The full Customer Service left-nav (Workspace Sidebar) — authoritative layout, enforced on every
 # migrate by _ensure_cs_sidebar(). Section Break = group header; Link → its DocType/Report/URL/Workspace.
 # (l = Link helper.)
-def _sb(label):
-    return {"type": "Section Break", "label": label}
+# A group header is a Section Break at indent=1 with an icon (this is what renders the collapsible
+# expand arrow); its member links follow at indent=0 until the next Section Break. Matches the stock
+# desk sidebars (e.g. Selling → POS / Items & Pricing / Setup).
+def _sb(label, icon):
+    return {"type": "Section Break", "label": label, "icon": icon, "indent": 1, "collapsible": 1}
 
 
 def _l(label, link_type, link_to="", url=""):
-    return {"type": "Link", "label": label, "link_type": link_type, "link_to": link_to, "url": url}
+    return {"type": "Link", "label": label, "link_type": link_type, "link_to": link_to,
+            "url": url, "icon": "", "indent": 0, "collapsible": 1}
 
 
 SIDEBAR_STRUCTURE = [
     _l("Home", "Workspace", "Customer Service"),
-    _sb("Complaint"),
+    _sb("Complaint", "alert-circle"),
     _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
     _l("All Complaint", "DocType", "CS Complaint"),
-    _sb("Order Creation"),
+    _sb("Order Creation", "sell"),
     _l("New Sales Order", "URL", url="/desk/sales-order/new"),
     _l("Open Sales Order", "Report", "Open Sales Orders"),
     _l("List of Sales order", "Report", "Sales Orders — Created"),
@@ -945,16 +949,16 @@ SIDEBAR_STRUCTURE = [
     _l("Status Invoices", "Report", "Sales Invoices — Created"),
     _l("Proforma Invoice", "DocType", "Sales Order"),       # generated from an SO via the button
     _l("Quotations — Created", "Report", "Quotations — Created"),
-    _sb("Stock"),
+    _sb("Stock", "stock"),
     _l("Stock List", "Report", "Stock Balance"),
     _l("Stock Check", "Report", "Item Stock and Open Orders"),
-    _sb("Approvals"),
+    _sb("Approvals", "shield"),
     _l("Orders on Credit Hold", "Report", "Orders on Credit Hold"),
     _l("Pending for Discount Approval", "Report", "Pending Discount Approvals"),
-    _sb("Factory Orders"),
+    _sb("Factory Orders", "organization"),
     _l("All Factory orders list", "DocType", "KM Order"),
     _l("Factory Orders status", "Report", "Klemco Orders — Created"),
-    _sb("Configuration"),
+    _sb("Configuration", "setting"),
     _l("Category Mapping", "DocType", "CS Complaint Category Map"),
     _l("Discount Matrix", "DocType", "CS Discount Matrix"),
     _l("Item", "DocType", "Item"),
@@ -1056,10 +1060,10 @@ def _ensure_cs_sidebar():
                 continue
             rows.append(it)
         sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
-        current = [(i.type, i.label, i.get("link_type") or "", i.get("link_to") or "", i.get("url") or "")
-                   for i in sb.items]
-        desired = [(r["type"], r["label"], r.get("link_type", ""), r.get("link_to", ""), r.get("url", ""))
-                   for r in rows]
+        current = [(i.type, i.label, i.get("link_type") or "", i.get("link_to") or "", i.get("url") or "",
+                    i.get("indent") or 0, i.get("icon") or "") for i in sb.items]
+        desired = [(r["type"], r["label"], r.get("link_type", ""), r.get("link_to", ""), r.get("url", ""),
+                    r.get("indent", 0), r.get("icon", "")) for r in rows]
         if current == desired:
             return
         sb.set("items", [])
@@ -1067,6 +1071,7 @@ def _ensure_cs_sidebar():
             row = sb.append("items", {
                 "type": r["type"], "label": r["label"],
                 "link_type": r.get("link_type", ""), "link_to": r.get("link_to", ""), "url": r.get("url", ""),
+                "indent": r.get("indent", 0), "icon": r.get("icon", ""), "collapsible": r.get("collapsible", 1),
             })
             row.idx = idx
         sb.save(ignore_permissions=True)
