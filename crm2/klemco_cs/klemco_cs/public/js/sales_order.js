@@ -37,6 +37,13 @@ frappe.ui.form.on('Sales Order', {
         _sitc_ui(frm);
         _km_production_ui(frm);
         _mandate_docs_ui(frm);
+
+        // Once billed, item lines are frozen — hide "Update Items" (server also blocks it).
+        if ((frm.doc.per_billed || 0) > 0) {
+            frm.remove_custom_button(__('Update Items'));
+            frm.dashboard.add_comment(
+                __('This order has been billed — item lines are locked.'), 'blue', true);
+        }
     },
 
     onload(frm) {

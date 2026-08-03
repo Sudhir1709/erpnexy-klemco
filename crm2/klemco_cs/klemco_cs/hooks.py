@@ -85,3 +85,10 @@ doc_events = {
         'before_validate': 'klemco_cs.events.payment_terms_template.before_validate',
     },
 }
+
+# Freeze a billed Sales Order's item lines: wrap the "Update Items" handler to reject a Sales Order
+# with per_billed > 0 (other doctypes pass through to ERPNext's original).
+override_whitelisted_methods = {
+    'erpnext.controllers.accounts_controller.update_child_qty_rate':
+        'klemco_cs.events.sales_order.update_child_qty_rate',
+}

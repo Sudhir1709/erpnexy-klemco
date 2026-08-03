@@ -402,3 +402,16 @@ def _ack_recipients(doc):
             if email:
                 recipients.append(email)
     return recipients
+
+
+@frappe.whitelist()
+def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, child_docname="items"):
+    """Wraps ERPNext's 'Update Items' handler (via override_whitelisted_methods) to freeze a Sales
+    Order's item lines once it has been billed — no qty/rate/add/remove after invoicing. Any other
+    doctype (Purchase Order, etc.) passes straight through to the original."""
+    from erpnext.controllers.accounts_controller import update_child_qty_rate as _erp_update
+    if parent_doctype == "Sales Order" and flt(
+        frappe.db.get_value("Sales Order", parent_doctype_name, "per_billed")
+    ) > 0:
+        frappe.throw(_("This Sales Order has been billed — its item lines are frozen and can't be changed."))
+    return _erp_update(parent_doctype, trans_items, parent_doctype_name, child_docname)
