@@ -370,7 +370,7 @@
     "doctype": "Workspace Sidebar Item"
    },
    {
-    "label": "Factory Orders",
+    "label": "Plant Orders",
     "link_type": "",
     "icon": "organization",
     "type": "Section Break",
@@ -388,7 +388,7 @@
     "doctype": "Workspace Sidebar Item"
    },
    {
-    "label": "All Factory orders list",
+    "label": "All Plant Orders",
     "link_type": "DocType",
     "icon": "",
     "type": "Link",
@@ -406,7 +406,7 @@
     "doctype": "Workspace Sidebar Item"
    },
    {
-    "label": "Factory Orders status",
+    "label": "Plant Orders status",
     "link_type": "Report",
     "icon": "",
     "type": "Link",
