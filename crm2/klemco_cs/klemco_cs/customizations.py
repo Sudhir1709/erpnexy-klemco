@@ -859,6 +859,7 @@ def _ensure_stock_allocation():
         "enable_stock_reservation": 1,   # turn the feature on
         "auto_reserve_stock": 1,         # auto-reserve available stock when a Sales Order is submitted
         "allow_partial_reservation": 1,  # reserve what's available when stock is short (rest = backorder)
+        "valuation_method": "FIFO",      # stock consumed on delivery/billing is costed oldest-first (FIFO)
     }
     for field, value in wanted.items():
         if not meta.get_field(field):
