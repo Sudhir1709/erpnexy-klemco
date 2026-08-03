@@ -23,6 +23,8 @@
   "transfer_billing_status",
   "items_section",
   "items",
+  "cs_attach_section",
+  "cs_attachments",
   "amended_from"
  ],
  "fields": [
@@ -105,6 +107,19 @@
    "label": "Items",
    "options": "KM Order Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "cs_attach_section",
+   "fieldtype": "Section Break",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "cs_attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "CS Attachment",
+   "allow_on_submit": 1,
+   "description": "Attach any files (Excel, PDF, drawings …). Can be added during/after production."
   },
   {
    "fieldname": "amended_from",

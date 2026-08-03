@@ -12,6 +12,7 @@ frappe.ui.form.on('KM Order', {
             });
         }
         _stage_button(frm);
+        _attachments_ui(frm);
         // Generate the KM order's purchase bill (Purchase Invoice at the item PURCHASE rate).
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('Generate Purchase Bill'), () => {
@@ -114,6 +115,25 @@ function _stage_button(frm) {
             });
         });
     });
+}
+
+// Attachments — "Upload Files" button: select several files at once; each is added as a row in
+// the cs_attachments grid (any file type). Manual "Add Row" in the grid also works.
+function _attachments_ui(frm) {
+    if (frm.is_new()) return;
+    frm.add_custom_button(__('Upload Files'), () => {
+        new frappe.ui.FileUploader({
+            allow_multiple: true,
+            doctype: frm.doctype,
+            docname: frm.docname,
+            folder: 'Home/Attachments',
+            on_success(file_doc) {
+                frm.add_child('cs_attachments', { file: file_doc.file_url, title: file_doc.file_name });
+                frm.refresh_field('cs_attachments');
+                frm.dirty();
+            },
+        });
+    }, __('Attachments'));
 }
 
 function _flag_mismatches(frm) {
