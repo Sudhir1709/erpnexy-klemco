@@ -925,17 +925,22 @@ def _ensure_ic_stock_entry_taxes_field():
 # A group header is a Section Break at indent=1 with an icon (this is what renders the collapsible
 # expand arrow); its member links follow at indent=0 until the next Section Break. Matches the stock
 # desk sidebars (e.g. Selling → POS / Items & Pricing / Setup).
+# A group is a Section Break header (child=0, indent=1, icon) followed by member Links with
+# child=1 — find_nested_items() (sidebar.js) nests a link under the preceding section ONLY when
+# child=1, and that nesting is what the collapse/expand arrow shows/hides. Home is a top-level
+# link (child=0). Matches the stock desk sidebars.
 def _sb(label, icon):
-    return {"type": "Section Break", "label": label, "icon": icon, "indent": 1, "collapsible": 1}
+    return {"type": "Section Break", "label": label, "icon": icon,
+            "indent": 1, "child": 0, "collapsible": 1}
 
 
-def _l(label, link_type, link_to="", url=""):
+def _l(label, link_type, link_to="", url="", child=1):
     return {"type": "Link", "label": label, "link_type": link_type, "link_to": link_to,
-            "url": url, "icon": "", "indent": 0, "collapsible": 1}
+            "url": url, "icon": "", "indent": 0, "child": child, "collapsible": 1}
 
 
 SIDEBAR_STRUCTURE = [
-    _l("Home", "Workspace", "Customer Service"),
+    _l("Home", "Workspace", "Customer Service", child=0),
     _sb("Complaint", "alert-circle"),
     _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
     _l("All Complaint", "DocType", "CS Complaint"),
@@ -948,7 +953,6 @@ SIDEBAR_STRUCTURE = [
     _l("Sales Invoice List", "DocType", "Sales Invoice"),
     _l("Status Invoices", "Report", "Sales Invoices — Created"),
     _l("Proforma Invoice", "DocType", "Sales Order"),       # generated from an SO via the button
-    _l("Quotations — Created", "Report", "Quotations — Created"),
     _sb("Stock", "stock"),
     _l("Stock List", "Report", "Stock Balance"),
     _l("Stock Check", "Report", "Item Stock and Open Orders"),
@@ -958,11 +962,9 @@ SIDEBAR_STRUCTURE = [
     _sb("Factory Orders", "organization"),
     _l("All Factory orders list", "DocType", "KM Order"),
     _l("Factory Orders status", "Report", "Klemco Orders — Created"),
-    _sb("Configuration", "setting"),
-    _l("Category Mapping", "DocType", "CS Complaint Category Map"),
-    _l("Discount Matrix", "DocType", "CS Discount Matrix"),
-    _l("Item", "DocType", "Item"),
-    _l("Client Scripts", "DocType", "Client Script"),
+    _sb("Complaints", "alert-circle"),
+    _l("All Complaints", "DocType", "CS Complaint"),
+    _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
 ]
 
 
@@ -1061,9 +1063,9 @@ def _ensure_cs_sidebar():
             rows.append(it)
         sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
         current = [(i.type, i.label, i.get("link_type") or "", i.get("link_to") or "", i.get("url") or "",
-                    i.get("indent") or 0, i.get("icon") or "") for i in sb.items]
+                    i.get("indent") or 0, i.get("icon") or "", i.get("child") or 0) for i in sb.items]
         desired = [(r["type"], r["label"], r.get("link_type", ""), r.get("link_to", ""), r.get("url", ""),
-                    r.get("indent", 0), r.get("icon", "")) for r in rows]
+                    r.get("indent", 0), r.get("icon", ""), r.get("child", 0)) for r in rows]
         if current == desired:
             return
         sb.set("items", [])
@@ -1071,7 +1073,8 @@ def _ensure_cs_sidebar():
             row = sb.append("items", {
                 "type": r["type"], "label": r["label"],
                 "link_type": r.get("link_type", ""), "link_to": r.get("link_to", ""), "url": r.get("url", ""),
-                "indent": r.get("indent", 0), "icon": r.get("icon", ""), "collapsible": r.get("collapsible", 1),
+                "indent": r.get("indent", 0), "icon": r.get("icon", ""),
+                "child": r.get("child", 0), "collapsible": r.get("collapsible", 1),
             })
             row.idx = idx
         sb.save(ignore_permissions=True)
