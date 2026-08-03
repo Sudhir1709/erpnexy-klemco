@@ -120,7 +120,6 @@ function _stage_button(frm) {
 // Attachments — "Upload Files" button: select several files at once; each is added as a row in
 // the cs_attachments grid (any file type). Manual "Add Row" in the grid also works.
 function _attachments_ui(frm) {
-    if (frm.is_new()) return;
     frm.add_custom_button(__('Upload Files'), () => {
         new frappe.ui.FileUploader({
             allow_multiple: true,

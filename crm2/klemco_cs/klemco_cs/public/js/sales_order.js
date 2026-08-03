@@ -69,7 +69,6 @@ frappe.ui.form.on('Sales Order', {
 // once; each uploaded file is added as a row in the cs_mandate_documents grid. (Manual "Add Row"
 // in the grid still works for one-offs.)
 function _mandate_docs_ui(frm) {
-    if (frm.is_new()) return;
     frm.add_custom_button(__('Upload Documents'), () => {
         frappe.prompt(
             [{
