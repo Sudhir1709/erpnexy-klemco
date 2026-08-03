@@ -694,7 +694,7 @@ def apply_customizations():
     _ensure_default_company()
     _ensure_order_reports()
     _ensure_worklist_reports()
-    _ensure_cs_sidebar_links()
+    _ensure_cs_sidebar()
     create_custom_fields(CUSTOM_FIELDS, update=True)
     # Print formats first — a `default_print_format` property setter is skipped if its format
     # doesn't exist yet (see _apply_property_setters), so create them before applying setters.
@@ -919,39 +919,46 @@ def _ensure_ic_stock_entry_taxes_field():
     )
 
 
-# Extra links surfaced in the Customer Service left-nav (Workspace Sidebar). Each is inserted
-# after an existing anchor item so it lands in the right group, and only if its target exists.
-CS_SIDEBAR_LINKS = [
-    {"label": "Discount Matrix", "link_type": "DocType", "link_to": "CS Discount Matrix",
-     "after": "Category Mapping", "requires": ("DocType", "CS Discount Matrix")},
-    # Item master, reachable from the CS workspace (create Freight / service items here).
-    {"label": "Item", "link_type": "DocType", "link_to": "Item",
-     "after": "Category Mapping", "requires": ("DocType", "Item")},
-    # "What's in stock?" — the report users actually need; otherwise it's buried in the Stock module.
-    {"label": "Stock Balance", "link_type": "Report", "link_to": "Stock Balance",
-     "after": "Sales Invoices", "requires": ("Report", "Stock Balance")},
-    # Order lists that also show Created On + Created By (see _ensure_order_reports). The desk List
-    # view can't show those system fields as columns, so these are Report-view reports.
-    {"label": "Sales Orders — Created", "link_type": "Report", "link_to": "Sales Orders — Created",
-     "after": "All Sales Orders", "requires": ("Report", "Sales Orders — Created")},
-    {"label": "Delivery Notes — Created", "link_type": "Report", "link_to": "Delivery Notes — Created",
-     "after": "Delivery Notes", "requires": ("Report", "Delivery Notes — Created")},
-    {"label": "Sales Invoices — Created", "link_type": "Report", "link_to": "Sales Invoices — Created",
-     "after": "Sales Invoices", "requires": ("Report", "Sales Invoices — Created")},
-    {"label": "Klemco Orders — Created", "link_type": "Report", "link_to": "Klemco Orders — Created",
-     "after": "All Klemco Orders", "requires": ("Report", "Klemco Orders — Created")},
-    {"label": "Quotations — Created", "link_type": "Report", "link_to": "Quotations — Created",
-     "after": "New Klemco Order", "requires": ("Report", "Quotations — Created")},
-    # Approval worklists — every order currently stuck for discount / credit sign-off.
-    {"label": "Pending Discount Approvals", "link_type": "Report", "link_to": "Pending Discount Approvals",
-     "after": "All Sales Orders", "requires": ("Report", "Pending Discount Approvals")},
-    {"label": "Orders on Credit Hold", "link_type": "Report", "link_to": "Orders on Credit Hold",
-     "after": "All Sales Orders", "requires": ("Report", "Orders on Credit Hold")},
-    {"label": "Open Sales Orders", "link_type": "Report", "link_to": "Open Sales Orders",
-     "after": "All Sales Orders", "requires": ("Report", "Open Sales Orders")},
-    # Stock on hand for an item at a plant (warehouse) + the open Sales Orders demanding it there.
-    {"label": "Item Stock & Open Orders", "link_type": "Report", "link_to": "Item Stock and Open Orders",
-     "after": "Sales Invoices", "requires": ("Report", "Item Stock and Open Orders")},
+# The full Customer Service left-nav (Workspace Sidebar) — authoritative layout, enforced on every
+# migrate by _ensure_cs_sidebar(). Section Break = group header; Link → its DocType/Report/URL/Workspace.
+# (l = Link helper.)
+def _sb(label):
+    return {"type": "Section Break", "label": label}
+
+
+def _l(label, link_type, link_to="", url=""):
+    return {"type": "Link", "label": label, "link_type": link_type, "link_to": link_to, "url": url}
+
+
+SIDEBAR_STRUCTURE = [
+    _l("Home", "Workspace", "Customer Service"),
+    _sb("Complaint"),
+    _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
+    _l("All Complaint", "DocType", "CS Complaint"),
+    _sb("Order Creation"),
+    _l("New Sales Order", "URL", url="/desk/sales-order/new"),
+    _l("Open Sales Order", "Report", "Open Sales Orders"),
+    _l("List of Sales order", "Report", "Sales Orders — Created"),
+    _l("List of Delivery notes", "DocType", "Delivery Note"),
+    _l("Status Delivery Notes", "Report", "Delivery Notes — Created"),
+    _l("Sales Invoice List", "DocType", "Sales Invoice"),
+    _l("Status Invoices", "Report", "Sales Invoices — Created"),
+    _l("Proforma Invoice", "DocType", "Sales Order"),       # generated from an SO via the button
+    _l("Quotations — Created", "Report", "Quotations — Created"),
+    _sb("Stock"),
+    _l("Stock List", "Report", "Stock Balance"),
+    _l("Stock Check", "Report", "Item Stock and Open Orders"),
+    _sb("Approvals"),
+    _l("Orders on Credit Hold", "Report", "Orders on Credit Hold"),
+    _l("Pending for Discount Approval", "Report", "Pending Discount Approvals"),
+    _sb("Factory Orders"),
+    _l("All Factory orders list", "DocType", "KM Order"),
+    _l("Factory Orders status", "Report", "Klemco Orders — Created"),
+    _sb("Configuration"),
+    _l("Category Mapping", "DocType", "CS Complaint Category Map"),
+    _l("Discount Matrix", "DocType", "CS Discount Matrix"),
+    _l("Item", "DocType", "Item"),
+    _l("Client Scripts", "DocType", "Client Script"),
 ]
 
 
@@ -1035,47 +1042,36 @@ def _ensure_worklist_reports():
         _ensure_report(name, dt, cols, filters)
 
 
-def _ensure_cs_sidebar_links():
-    """Surface key screens in the Customer Service left-nav (Workspace Sidebar). The sidebar is a
-    hand-built DB doc, so add any missing links idempotently on every migrate — otherwise they are
-    only reachable by typing a URL. Wrapped defensively so a nav tweak never blocks a migrate."""
+def _ensure_cs_sidebar():
+    """Enforce the Customer Service left-nav (Workspace Sidebar) = SIDEBAR_STRUCTURE. Authoritative +
+    idempotent: rewrites the items only when they differ. Links whose DocType/Report target is missing
+    (e.g. a report absent on 8081) are skipped. Wrapped so a nav tweak never blocks a migrate."""
     try:
         if not frappe.db.exists("Workspace Sidebar", "Customer Service"):
             return
-        sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
-        existing = {i.label for i in sb.items} | {i.link_to for i in sb.items if i.link_to}
-
-        pending = [
-            l for l in CS_SIDEBAR_LINKS
-            if l["label"] not in existing
-            and l["link_to"] not in existing
-            and frappe.db.exists(l["requires"][0], l["requires"][1])
-        ]
-        if not pending:
-            return
-
-        # Rebuild the child table, dropping each new link in after its anchor; anything whose
-        # anchor is missing is appended at the end.
         rows = []
-        for i in sb.items:
-            rows.append({"label": i.label, "link_type": i.link_type, "link_to": i.link_to,
-                         "url": i.get("url"), "type": i.type})
-            for l in list(pending):
-                if i.label == l["after"]:
-                    rows.append({"label": l["label"], "link_type": l["link_type"],
-                                 "link_to": l["link_to"], "url": "", "type": "Link"})
-                    pending.remove(l)
-        for l in pending:  # anchor not found — append
-            rows.append({"label": l["label"], "link_type": l["link_type"],
-                         "link_to": l["link_to"], "url": "", "type": "Link"})
-
+        for it in SIDEBAR_STRUCTURE:
+            if it["type"] == "Link" and it["link_type"] in ("DocType", "Report") \
+                    and not frappe.db.exists(it["link_type"], it["link_to"]):
+                continue
+            rows.append(it)
+        sb = frappe.get_doc("Workspace Sidebar", "Customer Service")
+        current = [(i.type, i.label, i.get("link_type") or "", i.get("link_to") or "", i.get("url") or "")
+                   for i in sb.items]
+        desired = [(r["type"], r["label"], r.get("link_type", ""), r.get("link_to", ""), r.get("url", ""))
+                   for r in rows]
+        if current == desired:
+            return
         sb.set("items", [])
         for idx, r in enumerate(rows, start=1):
-            row = sb.append("items", r)
+            row = sb.append("items", {
+                "type": r["type"], "label": r["label"],
+                "link_type": r.get("link_type", ""), "link_to": r.get("link_to", ""), "url": r.get("url", ""),
+            })
             row.idx = idx
         sb.save(ignore_permissions=True)
     except Exception:
-        frappe.log_error(title="klemco_cs: CS sidebar links")
+        frappe.log_error(title="klemco_cs: CS sidebar")
 
 
 def _ensure_billing_controls():
