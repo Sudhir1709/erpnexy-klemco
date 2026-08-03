@@ -953,6 +953,7 @@ SIDEBAR_STRUCTURE = [
     _l("Sales Invoice List", "DocType", "Sales Invoice"),
     _l("Status Invoices", "Report", "Sales Invoices — Created"),
     _l("Proforma Invoice", "DocType", "Sales Order"),       # generated from an SO via the button
+    _l("Quotations — Created", "Report", "Quotations — Created"),
     _sb("Stock", "stock"),
     _l("Stock List", "Report", "Stock Balance"),
     _l("Stock Check", "Report", "Item Stock and Open Orders"),
@@ -962,9 +963,11 @@ SIDEBAR_STRUCTURE = [
     _sb("Factory Orders", "organization"),
     _l("All Factory orders list", "DocType", "KM Order"),
     _l("Factory Orders status", "Report", "Klemco Orders — Created"),
-    _sb("Complaints", "alert-circle"),
-    _l("All Complaints", "DocType", "CS Complaint"),
-    _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
+    _sb("Configuration", "setting"),
+    _l("Category Mapping", "DocType", "CS Complaint Category Map"),
+    _l("Discount Matrix", "DocType", "CS Discount Matrix"),
+    _l("Item", "DocType", "Item"),
+    _l("Client Scripts", "DocType", "Client Script"),
 ]
 
 
