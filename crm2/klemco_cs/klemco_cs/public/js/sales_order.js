@@ -37,6 +37,7 @@ frappe.ui.form.on('Sales Order', {
         _sitc_ui(frm);
         _km_production_ui(frm);
         _mandate_docs_ui(frm);
+        _import_items_ui(frm);
 
         // Once billed, item lines are frozen — hide "Update Items" (server also blocks it).
         if ((frm.doc.per_billed || 0) > 0) {
@@ -64,6 +65,57 @@ frappe.ui.form.on('Sales Order', {
         _client_validate_dates(frm);
     },
 });
+
+// Import Items from a plain CSV (Item Code + Qty, optional Rate / Warehouse / Delivery Date) — a
+// friendly alternative to the native grid Upload, which needs the exact 7-row Download template.
+// Rows are appended; Item Name / Rate fill server-side on Save (item_name is optional).
+function _import_items_ui(frm) {
+    frm.add_custom_button(__('Import Items'), () => {
+        new frappe.ui.FileUploader({
+            as_dataurl: true,
+            allow_multiple: false,
+            restrictions: { allowed_file_types: ['.csv'] },
+            on_success(file) {
+                const rows = frappe.utils.csv_to_array(frappe.utils.get_decoded_string(file.dataurl));
+                if (!rows || rows.length < 2) {
+                    frappe.throw(__('The CSV has no data rows.'));
+                }
+                const head = (rows[0] || []).map((h) => (h || '').toString().trim().toLowerCase());
+                const find = (re) => head.findIndex((h) => re.test(h));
+                const col = {
+                    item: find(/item.?code|^item$/),
+                    qty: find(/qty|quantity/),
+                    rate: find(/rate|price/),
+                    wh: find(/warehouse/),
+                    dd: find(/delivery.?date/),
+                };
+                if (col.item < 0) {
+                    frappe.throw(__("The CSV needs an 'Item Code' column (plus Qty; Rate / Warehouse / Delivery Date optional)."));
+                }
+                let added = 0, skipped = 0;
+                for (let i = 1; i < rows.length; i++) {
+                    const r = rows[i] || [];
+                    const code = (r[col.item] || '').toString().trim();
+                    if (!code) { if (r.join('').trim()) skipped++; continue; }
+                    const c = frm.add_child('items');
+                    c.item_code = code;
+                    c.qty = flt(col.qty >= 0 ? r[col.qty] : 0) || 1;
+                    if (col.rate >= 0 && r[col.rate]) c.rate = flt(r[col.rate]);
+                    if (col.wh >= 0 && (r[col.wh] || '').toString().trim()) c.warehouse = r[col.wh].toString().trim();
+                    if (col.dd >= 0 && (r[col.dd] || '').toString().trim()) c.delivery_date = r[col.dd].toString().trim();
+                    added++;
+                }
+                frm.refresh_field('items');
+                frm.dirty();
+                frappe.show_alert({
+                    message: __('Imported {0} item(s){1}. Save to fetch names/rates.',
+                        [added, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : '']),
+                    indicator: added ? 'green' : 'orange',
+                }, 7);
+            },
+        });
+    }, __('Get Items From'));
+}
 
 // Mandate Documents — "Upload Documents" button: pick a Type once, then select several files at
 // once; each uploaded file is added as a row in the cs_mandate_documents grid. (Manual "Add Row"
