@@ -373,6 +373,14 @@ PROPERTY_SETTERS = [
         "value": "Plant Order",
         "property_type": "Data",
     },
+    {
+        # Sales Invoice prints the Tally-style "Klemco Tax Invoice" (GST) layout by default.
+        "doctype_or_field": "DocType",
+        "doctype": "Sales Invoice",
+        "property": "default_print_format",
+        "value": "Klemco Tax Invoice",
+        "property_type": "Data",
+    },
     # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
     # real category from the GSTIN on save — it stays Registered when a GSTIN is entered, and reverts
     # to Unregistered (India) / Overseas gracefully when there's none (no validation error).
@@ -696,10 +704,12 @@ def apply_customizations():
     _ensure_worklist_reports()
     _ensure_cs_sidebar()
     create_custom_fields(CUSTOM_FIELDS, update=True)
+    _ensure_company_print_details()
     # Print formats first — a `default_print_format` property setter is skipped if its format
     # doesn't exist yet (see _apply_property_setters), so create them before applying setters.
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
+    _ensure_klemco_tax_invoice()
     _apply_property_setters()
     _ensure_so_list_columns()
     _ensure_sitc_item()
@@ -1351,3 +1361,187 @@ def _ensure_proforma_print_formats():
             "print_format_type": "Jinja",
             "html": PLANT_ORDER_HTML,
         }).insert(ignore_permissions=True)
+
+
+# ── Klemco Tax Invoice (GST) — Tally-style Sales Invoice print format ────────────────────────────
+# Replicates Klemco's current Tally Prime "Tax Invoice / e-Invoice" layout while reusing India
+# Compliance's GST data helpers for correctness: doc.gst_breakup_table (HSN-wise tax summary, auto
+# IGST vs CGST+SGST), doc.in_words (amount in words), and the guarded IRN/Ack/QR block (blank until
+# e-invoicing is enabled + IRP credentials added — the sample's IRN/QR come from Klemco's live Tally,
+# which is IRP-connected; ERPNext leaves them empty here, so the block is hidden when doc.irn is unset).
+# Seller footer data (UDYAM / CIN / PAN / bank) is read from the Company "…_for_printing" tables,
+# seeded by _ensure_company_print_details().
+KLEMCO_TAX_INVOICE_HTML = """
+{%- set _company = frappe.get_doc("Company", doc.company) %}
+<div style="font-size:11px;color:#000;">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+    <tr>
+      <td style="width:70%;vertical-align:top;"><h3 style="margin:0;letter-spacing:1px;">Tax Invoice</h3></td>
+      <td style="width:30%;vertical-align:top;text-align:right;">
+        <strong>e-Invoice</strong>
+        {%- if doc.irn %}
+          {%- set _el = frappe.db.get_value("e-Invoice Log", doc.irn, ["invoice_data","signed_qr_code"], as_dict=True) %}
+          {%- if _el %}
+            {%- set _idata = frappe.parse_json(_el.invoice_data or "{}") %}
+            <div><img src="data:image/png;base64,{{ get_qr_code(_el.signed_qr_code, scale=2) }}" style="width:110px;height:110px;"></div>
+            <div style="font-size:9px;">IRN: {{ doc.irn }}</div>
+            <div style="font-size:9px;">Ack No.: {{ _idata.get("AckNo") }}</div>
+            <div style="font-size:9px;">Ack Date: {{ _idata.get("AckDt") }}</div>
+          {%- endif %}
+        {%- endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
+    <tr>
+      <td style="width:55%;vertical-align:top;">
+        <strong>{{ _company.company_name }}</strong><br>
+        {{ (doc.company_address_display or "") | safe }}
+        <br>GSTIN/UIN: {{ doc.company_gstin or "" }}
+        <br>UDYAM: UDYAM-PB-01-0113236
+        <br>CIN: U46620PB2025PTC064410
+        {%- if _company.phone_no %}<br>Contact: {{ _company.phone_no }}{% endif %}
+        {%- if _company.email %}<br>E-Mail: {{ _company.email }}{% endif %}
+      </td>
+      <td style="width:45%;vertical-align:top;padding:0;">
+        <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="3">
+          <tr><td style="width:50%;">Invoice No.<br><strong>{{ doc.name }}</strong></td>
+              <td>Dated<br><strong>{{ frappe.format(doc.posting_date, {"fieldtype":"Date"}) }}</strong></td></tr>
+          <tr><td>e-Way Bill No.<br>{{ doc.ewaybill or "" }}</td>
+              <td>Mode/Terms of Payment<br>{{ doc.payment_terms_template or "" }}</td></tr>
+          <tr><td>Buyer's Order No.<br>{{ doc.po_no or "" }}</td>
+              <td>Dated<br>{{ frappe.format(doc.po_date, {"fieldtype":"Date"}) if doc.po_date else "" }}</td></tr>
+          <tr><td>Dispatched through<br>{{ doc.transporter_name or "" }}</td>
+              <td>Vehicle No.<br>{{ doc.vehicle_no or "" }}</td></tr>
+          <tr><td colspan="2">Terms of Delivery<br>{{ doc.tc_name or "" }}</td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top;">
+        <strong>Consignee (Ship to)</strong><br>
+        {{ doc.customer_name }}<br>
+        {{ (doc.shipping_address or doc.address_display or "") | safe }}
+      </td>
+      <td style="vertical-align:top;">
+        <strong>Buyer (Bill to)</strong><br>
+        {{ doc.customer_name }}<br>
+        {{ (doc.address_display or "") | safe }}
+        {%- if doc.billing_address_gstin %}<br>GSTIN/UIN: {{ doc.billing_address_gstin }}{% endif %}
+        {%- if doc.place_of_supply %}<br>Place of Supply: {{ doc.place_of_supply }}{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table class="table table-bordered" style="font-size:11px;margin-top:0;margin-bottom:2px;">
+    <thead><tr>
+      <th style="width:4%;">Sl</th>
+      <th>Description of Goods / Services</th>
+      <th style="width:10%;">HSN/SAC</th>
+      <th class="text-right" style="width:12%;">Quantity</th>
+      <th class="text-right" style="width:14%;">Rate</th>
+      <th style="width:6%;">per</th>
+      <th class="text-right" style="width:16%;">Amount</th>
+    </tr></thead>
+    <tbody>
+    {%- for row in doc.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ row.item_name }}</strong>{% if row.description and row.description != row.item_name %}<br><span style="color:#555;">{{ row.description | striptags }}</span>{% endif %}</td>
+        <td>{{ row.gst_hsn_code or "" }}</td>
+        <td class="text-right">{{ row.qty }} {{ row.uom }}</td>
+        <td class="text-right">{{ frappe.format(row.rate, {"fieldtype":"Currency"}, doc=doc) }}</td>
+        <td>{{ row.uom }}</td>
+        <td class="text-right">{{ frappe.format(row.amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+      </tr>
+    {%- endfor %}
+    {%- for t in doc.taxes %}
+      {%- if t.tax_amount %}
+      <tr>
+        <td></td>
+        <td colspan="5" class="text-right"><em>{{ t.description }}</em></td>
+        <td class="text-right">{{ frappe.format(t.tax_amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+      </tr>
+      {%- endif %}
+    {%- endfor %}
+      <tr>
+        <td></td>
+        <td colspan="3" class="text-right"><strong>Total</strong></td>
+        <td class="text-right"><strong>{{ doc.total_qty }}</strong></td>
+        <td></td>
+        <td class="text-right"><strong>{{ frappe.format(doc.grand_total, {"fieldtype":"Currency"}, doc=doc) }}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-bottom:6px;">Amount Chargeable (in words): <strong>{{ doc.in_words or "" }}</strong>
+    <span style="float:right;">E. &amp; O.E</span></div>
+
+  {%- if doc.gst_breakup_table %}
+  <div style="margin-bottom:4px;">{{ doc.gst_breakup_table | safe }}</div>
+  {%- endif %}
+  {%- if doc.total_taxes_and_charges %}
+  <div style="margin-bottom:6px;">Tax Amount (in words): <strong>{{ frappe.utils.money_in_words(doc.total_taxes_and_charges, doc.currency) }}</strong></div>
+  {%- endif %}
+
+  <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
+    <tr>
+      <td style="width:55%;vertical-align:top;">
+        {%- if doc.remarks and doc.remarks != "No Remarks" %}Remarks: {{ doc.remarks }}<br>{% endif %}
+        {%- if _company.pan %}Company's PAN: <strong>{{ _company.pan }}</strong><br>{% endif %}
+        <div style="margin-top:6px;"><u>Declaration</u><br>
+          We declare that this invoice shows the actual price of the goods/services described and that all
+          particulars are true and correct.</div>
+      </td>
+      <td style="width:45%;vertical-align:top;">
+        <strong>Company's Bank Details</strong><br>
+        Bank Name: ICICI Bank Ltd<br>
+        A/c Name: KLEMCO India Private Limited<br>
+        A/c No.: 777705148127<br>
+        Branch &amp; IFSC: Amritsar &amp; ICIC0000066<br>
+        SWIFT: ICICINBB
+        <div style="margin-top:18px;text-align:right;">for <strong>{{ _company.company_name }}</strong><br><br>
+          Authorised Signatory</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="text-align:center;margin-top:6px;font-size:10px;">SUBJECT TO AMRITSAR JURISDICTION</div>
+  <div style="text-align:center;font-size:10px;color:#555;">This is a Computer Generated Invoice</div>
+</div>
+""".strip()
+
+
+def _ensure_klemco_tax_invoice():
+    """Create (or update on change) the Tally-style 'Klemco Tax Invoice' Sales Invoice print format.
+    Unlike the proforma seeder, this refreshes the html when it drifts so template tweaks redeploy
+    cleanly on the next apply_customizations()."""
+    name = "Klemco Tax Invoice"
+    if frappe.db.exists("Print Format", name):
+        pf = frappe.get_doc("Print Format", name)
+        if (pf.html or "") != KLEMCO_TAX_INVOICE_HTML:
+            pf.html = KLEMCO_TAX_INVOICE_HTML
+            pf.save(ignore_permissions=True)
+        return
+    frappe.get_doc({
+        "doctype": "Print Format",
+        "name": name,
+        "doc_type": "Sales Invoice",
+        "module": "Customer Service",
+        "standard": "No",
+        "custom_format": 1,
+        "print_format_type": "Jinja",
+        "html": KLEMCO_TAX_INVOICE_HTML,
+    }).insert(ignore_permissions=True)
+
+
+def _ensure_company_print_details():
+    """Set Klemco India's PAN so the Tax Invoice footer's 'Company's PAN' line renders. The seller's
+    UDYAM / CIN and the bank block are static Klemco facts embedded in KLEMCO_TAX_INVOICE_HTML (this
+    IC build has no Company '…_for_printing' tables — no Table fields on Company at all). Idempotent."""
+    company = "Klemco India"
+    if not frappe.db.exists("Company", company):
+        return
+    if not frappe.db.get_value("Company", company, "pan"):
+        frappe.db.set_value("Company", company, "pan", "AALCK8220C")
