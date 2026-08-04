@@ -42,7 +42,6 @@
    "label": "Linked Sales Order",
    "options": "Sales Order",
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "description": "Optional. Link a parent Sales Order to auto-fill the customer and items, or create a standalone Klemco Order and enter the customer directly."
   },
   {

@@ -971,6 +971,7 @@ SIDEBAR_STRUCTURE = [
     _l("Orders on Credit Hold", "Report", "Orders on Credit Hold"),
     _l("Pending for Discount Approval", "Report", "Pending Discount Approvals"),
     _sb("Plant Orders", "organization"),
+    _l("New Plant Order", "URL", url="/desk/km-order/new"),
     _l("All Plant Orders", "DocType", "KM Order"),
     _l("Plant Orders status", "Report", "Klemco Orders — Created"),
     _sb("Configuration", "setting"),
