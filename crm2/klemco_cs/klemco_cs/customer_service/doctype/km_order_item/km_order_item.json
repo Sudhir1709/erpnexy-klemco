@@ -76,7 +76,8 @@
    "options": "\nAccepted\nNew Date Proposed",
    "description": "Plant accepts the requested Delivery Date, or proposes a new Available Date for this line.",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "cs_available_date",
@@ -84,7 +85,8 @@
    "label": "Available Date (Plant)",
    "description": "Plant's proposed availability / delivery date for this line (item level).",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "matches_so",

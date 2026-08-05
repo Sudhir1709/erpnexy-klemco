@@ -20,6 +20,7 @@ frappe.ui.form.on('KM Order', {
                     + encodeURIComponent(frm.doc.name), '_blank');
             });
         }
+        _plant_dates_ui(frm);
         // Generate the KM order's purchase bill (Purchase Invoice at the item PURCHASE rate).
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('Generate Purchase Bill'), () => {
@@ -140,6 +141,33 @@ function _attachments_ui(frm) {
             },
         });
     }, __('Attachments'));
+}
+
+// Plant bulk actions: accept the requested delivery dates on every line, or propose one new
+// available date for all lines. Works on a submitted order (the items table is allow_on_submit).
+function _plant_dates_ui(frm) {
+    if (frm.is_new() || !(frm.doc.items || []).length) return;
+    const save = () => frm.save(frm.doc.docstatus === 1 ? 'Update' : undefined)
+        .then(() => frappe.show_alert({ message: __('Plant dates updated.'), indicator: 'green' }, 4));
+
+    frm.add_custom_button(__('Accept All Dates'), () => {
+        (frm.doc.items || []).forEach((r) =>
+            frappe.model.set_value(r.doctype, r.name, 'cs_plant_date_status', 'Accepted'));
+        save();
+    }, __('Plant Dates'));
+
+    frm.add_custom_button(__('Propose New Date'), () => {
+        frappe.prompt(
+            { fieldname: 'd', label: __('Proposed Available Date'), fieldtype: 'Date', reqd: 1 },
+            (v) => {
+                (frm.doc.items || []).forEach((r) => {
+                    frappe.model.set_value(r.doctype, r.name, 'cs_available_date', v.d);
+                    frappe.model.set_value(r.doctype, r.name, 'cs_plant_date_status', 'New Date Proposed');
+                });
+                save();
+            },
+            __('Propose a new date for all lines'), __('Apply'));
+    }, __('Plant Dates'));
 }
 
 function _flag_mismatches(frm) {
