@@ -116,6 +116,35 @@ def _role_user_emails(roles):
     return [e for e in (frappe.db.get_value("User", u, "email") or u for u in _role_users(roles)) if e]
 
 
+# ── New customer registered → CS / Marketing team (after_insert) ──
+_NEW_CUSTOMER_ALERT_ROLES = ["CS Manager", "CS Executive", "Sales Manager", "Marketing Manager"]
+
+
+def customer_registered(doc, method=None):
+    """Alert the CS / Marketing team when a new customer is registered — email + in-app bell.
+    Best-effort: never blocks the customer save."""
+    subject = _("New customer registered: {0}").format(doc.get("customer_name") or doc.name)
+    body = _(
+        "A new customer <b>{0}</b> ({1}) has just been registered. "
+        "Please review the registration details."
+    ).format(doc.get("customer_name") or doc.name, doc.name)
+    _safe_sendmail(_role_user_emails(_NEW_CUSTOMER_ALERT_ROLES), subject, body, "Customer", doc.name)
+    try:
+        users = [u for u in _role_users(_NEW_CUSTOMER_ALERT_ROLES) if u != frappe.session.user]
+        if users:
+            from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+            enqueue_create_notification(users, {
+                "type": "Alert",
+                "document_type": "Customer",
+                "document_name": doc.name,
+                "subject": subject,
+                "from_user": frappe.session.user,
+                "email_content": body,
+            })
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco new-customer alert failed")
+
+
 def _alert_approvers(doc, kind):
     """Email + in-app notification + to-do assignment to the approver group. Each channel is
     best-effort and isolated so a notification failure never blocks the order save."""

@@ -206,6 +206,21 @@ def release_credit_hold(sales_order):
 
 def on_submit(doc, method=None):
     _send_acknowledgement(doc)
+    _mark_source_quotations_accepted(doc)
+
+
+def _mark_source_quotations_accepted(doc):
+    """When a Sales Order is confirmed, mark the quotation(s) it was created from as 'Accepted'
+    (the Quotation conversion-status field). Best-effort; never blocks the submit."""
+    try:
+        quos = {i.get("prevdoc_docname") for i in (doc.get("items") or [])
+                if i.get("prevdoc_docname")}
+        for q in quos:
+            if frappe.db.exists("Quotation", q) and \
+                    frappe.db.get_value("Quotation", q, "cs_conversion_status") != "Accepted":
+                frappe.db.set_value("Quotation", q, "cs_conversion_status", "Accepted")
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco quotation auto-accept failed")
 
 
 # ── FR-5-02  Auto-GST tax category ────────────────────────────────────────────

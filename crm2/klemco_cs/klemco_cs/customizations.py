@@ -59,6 +59,17 @@ CUSTOM_FIELDS = {
         },
     ],
 
+    # ── User: capture the Sales Office at user creation ──
+    "User": [
+        {
+            "fieldname": "cs_sales_office",
+            "label": "Sales Office",
+            "fieldtype": "Data",
+            "insert_after": "mobile_no",
+            "description": "The sales office this user belongs to (captured at user creation).",
+        },
+    ],
+
     # ── Sales Order: 3PL Others (CR-14), delivery instructions (CR-16), RC deviation (CR-10) ──
     "Sales Order": [
         {
@@ -412,6 +423,33 @@ _PF_FIELDS = [
 CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_PF_FIELDS)
 CUSTOM_FIELDS["Sales Order"] = CUSTOM_FIELDS["Sales Order"] + list(_PF_FIELDS)
 CUSTOM_FIELDS["Sales Invoice"] = CUSTOM_FIELDS["Sales Invoice"] + list(_PF_FIELDS)
+
+# ── Quotation: conversion status — auto 'Accepted' when a Sales Order is created from it (see
+# events/sales_order.on_submit); otherwise the user marks Converted / Not Converted (+ a reason). ──
+_QUOTATION_STATUS_FIELDS = [
+    {
+        "fieldname": "cs_conversion_status",
+        "label": "Conversion Status",
+        "fieldtype": "Select",
+        "options": "\nAccepted\nConverted\nNot Converted",
+        "insert_after": "order_type",
+        "translatable": 0,
+        "in_standard_filter": 1,
+        "allow_on_submit": 1,
+        "description": "Auto-set to 'Accepted' when a Sales Order is created from this quotation; "
+                       "otherwise mark it Converted or Not Converted.",
+    },
+    {
+        "fieldname": "cs_not_converted_reason",
+        "label": "Not Converted — Reason",
+        "fieldtype": "Small Text",
+        "insert_after": "cs_conversion_status",
+        "depends_on": "eval:doc.cs_conversion_status=='Not Converted'",
+        "mandatory_depends_on": "eval:doc.cs_conversion_status=='Not Converted'",
+        "allow_on_submit": 1,
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_STATUS_FIELDS)
 
 
 # Delivery Note + Sales Order: make the per-item Required Delivery Date picker reject the past

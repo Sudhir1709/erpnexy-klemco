@@ -79,6 +79,9 @@ doc_events = {
     'Quotation': {
         'before_validate': 'klemco_cs.events.quotation.before_validate',
     },
+    'Customer': {
+        'after_insert': 'klemco_cs.notifications.customer_registered',
+    },
     'Item': {
         'validate': 'klemco_cs.events.item.validate',
     },
