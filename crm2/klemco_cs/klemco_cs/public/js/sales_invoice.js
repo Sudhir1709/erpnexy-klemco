@@ -32,6 +32,9 @@ frappe.ui.form.on('Sales Invoice', {
         });
     },
 
+    cs_add_pf(frm) { _pf_note(frm); },
+    cs_pf_rate(frm) { _pf_note(frm); },
+
     update_stock(frm) {
         // Direct billing (no Delivery Note): when the user ticks "Update Stock" the
         // Set Source Warehouse field appears. Default it to the company's Finished Goods
@@ -51,6 +54,15 @@ frappe.ui.form.on('Sales Invoice', {
         });
     },
 });
+
+// Packaging & Forwarding is applied server-side on Save (it restructures the tax rows so GST is
+// charged on it); nudge the user so they know to Save.
+function _pf_note(frm) {
+    if (frm.doc.cs_add_pf) {
+        frappe.show_alert({message: __('Packaging & Forwarding ({0}%) will be added before tax when you Save.',
+            [frm.doc.cs_pf_rate || 1.5]), indicator: 'blue'}, 5);
+    }
+}
 
 // Attaching a file to a checklist row marks that document as Provided automatically.
 frappe.ui.form.on('CS Dispatch Document', {

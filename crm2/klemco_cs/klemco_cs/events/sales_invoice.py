@@ -33,6 +33,9 @@ def before_validate(doc, method=None):
             "This Sales Invoice has no items to bill. If you created it from a Sales Order that is "
             "already fully invoiced, there is nothing left to bill."
         ))
+    # Optional Packaging & Forwarding charge (before tax, GST-inclusive).
+    from klemco_cs.events.pf import reconcile_pf
+    reconcile_pf(doc)
 
 
 def validate(doc, method=None):

@@ -15,7 +15,18 @@ frappe.ui.form.on('Quotation', {
     cs_project_type(frm) {
         _sitc_ui(frm);
     },
+    cs_add_pf(frm) { _pf_note(frm); },
+    cs_pf_rate(frm) { _pf_note(frm); },
 });
+
+// Packaging & Forwarding is applied server-side on Save (it restructures the tax rows so GST is
+// charged on it); nudge the user so they know to Save.
+function _pf_note(frm) {
+    if (frm.doc.cs_add_pf) {
+        frappe.show_alert({message: __('Packaging & Forwarding ({0}%) will be added before tax when you Save.',
+            [frm.doc.cs_pf_rate || 1.5]), indicator: 'blue'}, 5);
+    }
+}
 
 // SITC / Project quote: attach the BOQ + enter ONE lump-sum line instead of 30-40 rows. When the type
 // is set to SITC and the grid is empty, drop in the ready-made "SITC Works (as per BOQ)" line so the

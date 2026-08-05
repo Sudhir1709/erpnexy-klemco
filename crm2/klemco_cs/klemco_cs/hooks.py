@@ -76,6 +76,9 @@ doc_events = {
         'validate': 'klemco_cs.events.sales_invoice.validate',
         'before_submit': 'klemco_cs.events.sales_invoice.before_submit',
     },
+    'Quotation': {
+        'before_validate': 'klemco_cs.events.quotation.before_validate',
+    },
     'Item': {
         'validate': 'klemco_cs.events.item.validate',
     },

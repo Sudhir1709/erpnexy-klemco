@@ -387,6 +387,32 @@ _SITC_FIELDS = [
 CUSTOM_FIELDS["Quotation"] = list(_SITC_FIELDS)
 CUSTOM_FIELDS["Sales Order"] = CUSTOM_FIELDS["Sales Order"] + list(_SITC_FIELDS)
 
+# ── Optional Packaging & Forwarding (P&F) charge — same fields on Quotation, Sales Order and Sales
+# Invoice (identical fieldnames so they ride the stock mappers). Ticking cs_add_pf adds a P&F charge
+# (% of net total) BEFORE tax and restructures the GST rows so GST is charged on it — see events/pf.py.
+_PF_FIELDS = [
+    {
+        "fieldname": "cs_add_pf",
+        "label": "Add Packaging & Forwarding (P&F)",
+        "fieldtype": "Check",
+        "insert_after": "taxes_and_charges",
+        "description": "Add a Packaging & Forwarding charge (% of net total) before tax — GST is "
+                       "charged on it. Applied when you Save.",
+    },
+    {
+        "fieldname": "cs_pf_rate",
+        "label": "P&F Rate (%)",
+        "fieldtype": "Percent",
+        "default": "1.5",
+        "insert_after": "cs_add_pf",
+        "depends_on": "eval:doc.cs_add_pf",
+        "description": "Packaging & Forwarding rate applied on the net total. Default 1.5%.",
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_PF_FIELDS)
+CUSTOM_FIELDS["Sales Order"] = CUSTOM_FIELDS["Sales Order"] + list(_PF_FIELDS)
+CUSTOM_FIELDS["Sales Invoice"] = CUSTOM_FIELDS["Sales Invoice"] + list(_PF_FIELDS)
+
 
 # Delivery Note + Sales Order: make the per-item Required Delivery Date picker reject the past
 # client-side as well (server-side enforced in events). Property setter sets min on the field
@@ -735,6 +761,7 @@ def apply_customizations():
     _ensure_discount_matrix()
     _ensure_ic_stock_entry_taxes_field()
     _ensure_default_company()
+    _ensure_pf_accounts()
     _ensure_order_reports()
     _ensure_worklist_reports()
     _ensure_cs_sidebar()
@@ -752,6 +779,29 @@ def apply_customizations():
     _ensure_quotation_override()
     _ensure_plant_order_labels()
     frappe.clear_cache()
+
+
+def _ensure_pf_accounts():
+    """Create a 'Packaging and Forwarding Charges' chargeable ledger per company (mirrors the existing
+    'Freight and Forwarding Charges' account), so the optional P&F charge row has an account to post
+    to. Idempotent; skips companies without an Indirect Expenses parent."""
+    for company in frappe.get_all("Company", pluck="name"):
+        abbr = frappe.get_cached_value("Company", company, "abbr")
+        name = "Packaging and Forwarding Charges - %s" % abbr
+        if frappe.db.exists("Account", name):
+            continue
+        parent = "Indirect Expenses - %s" % abbr
+        if not frappe.db.exists("Account", parent):
+            continue
+        frappe.get_doc({
+            "doctype": "Account",
+            "account_name": "Packaging and Forwarding Charges",
+            "parent_account": parent,
+            "company": company,
+            "account_type": "Chargeable",
+            "root_type": "Expense",
+            "is_group": 0,
+        }).insert(ignore_permissions=True)
 
 
 # Relabel "KM / Klemco Order" → "Plant Order" across the desk via Translation records. The internal

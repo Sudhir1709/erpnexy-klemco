@@ -24,6 +24,9 @@ def before_validate(doc, method=None):
     # BR-OE-01: set the discount threshold from the Discount Matrix for this customer type,
     # so the existing gate (Server Script + client) checks against the configured maximum.
     _apply_discount_matrix(doc)
+    # Optional Packaging & Forwarding charge (before tax, GST-inclusive) — after GST rows exist.
+    from klemco_cs.events.pf import reconcile_pf
+    reconcile_pf(doc)
 
 
 def validate(doc, method=None):

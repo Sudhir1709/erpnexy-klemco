@@ -61,10 +61,22 @@ frappe.ui.form.on('Sales Order', {
         _sitc_ui(frm);
     },
 
+    cs_add_pf(frm) { _pf_note(frm); },
+    cs_pf_rate(frm) { _pf_note(frm); },
+
     validate(frm) {
         _client_validate_dates(frm);
     },
 });
+
+// Packaging & Forwarding is applied server-side on Save (it restructures the tax rows so GST is
+// charged on it); nudge the user so they know to Save.
+function _pf_note(frm) {
+    if (frm.doc.cs_add_pf) {
+        frappe.show_alert({message: __('Packaging & Forwarding ({0}%) will be added before tax when you Save.',
+            [frm.doc.cs_pf_rate || 1.5]), indicator: 'blue'}, 5);
+    }
+}
 
 // Import Items from a plain CSV (Item Code + Qty, optional Rate / Warehouse / Delivery Date) — a
 // friendly alternative to the native grid Upload, which needs the exact 7-row Download template.
