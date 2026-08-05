@@ -12,6 +12,12 @@ frappe.ui.form.on('Quotation', {
         }
         _sitc_ui(frm);
         _discount_ui(frm);
+        if (!frm.is_new() && frm.doc.cs_add_tds) {
+            frm.add_custom_button(__('Download TDS Pack'), () => {
+                window.open('/api/method/klemco_cs.tds.download_tds_pack?quotation='
+                    + encodeURIComponent(frm.doc.name), '_blank');
+            });
+        }
     },
     cs_project_type(frm) {
         _sitc_ui(frm);

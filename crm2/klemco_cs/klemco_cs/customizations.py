@@ -527,6 +527,17 @@ CUSTOM_FIELDS["Item"] = CUSTOM_FIELDS.get("Item", []) + [
     },
 ]
 
+# Company-wide standard datasheet, prepended to the TDS pack (always available for download).
+CUSTOM_FIELDS["Company"] = CUSTOM_FIELDS.get("Company", []) + [
+    {
+        "fieldname": "cs_standard_datasheet",
+        "label": "Standard Datasheet (PDF)",
+        "fieldtype": "Attach",
+        "insert_after": "company_logo",
+        "description": "Company standard datasheet (PDF), prepended to the TDS pack on quotations.",
+    },
+]
+
 
 # Delivery Note + Sales Order: make the per-item Required Delivery Date picker reject the past
 # client-side as well (server-side enforced in events). Property setter sets min on the field
@@ -554,6 +565,14 @@ PROPERTY_SETTERS = [
         "doctype": "Sales Invoice",
         "property": "default_print_format",
         "value": "Klemco Tax Invoice",
+        "property_type": "Data",
+    },
+    {
+        # Quotation prints the branded "Klemco Quotation" letterhead layout by default.
+        "doctype_or_field": "DocType",
+        "doctype": "Quotation",
+        "property": "default_print_format",
+        "value": "Klemco Quotation",
         "property_type": "Data",
     },
     # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
@@ -887,6 +906,7 @@ def apply_customizations():
     _ensure_delivery_challan_print_format()
     _ensure_proforma_print_formats()
     _ensure_klemco_tax_invoice()
+    _ensure_quotation_print_format()
     _apply_property_setters()
     _ensure_so_list_columns()
     _ensure_sitc_item()
@@ -1729,6 +1749,123 @@ KLEMCO_TAX_INVOICE_HTML = """
   <div style="text-align:center;font-size:10px;color:#555;">This is a Computer Generated Invoice</div>
 </div>
 """.strip()
+
+
+# ── Klemco Quotation — branded letterhead print format ──────────────────────────────────────────
+# Klemco logo + company block, Bill-To, items (with an optional product-image column when
+# cs_show_product_image is on), taxes (incl. P&F + GST), amount in words, a TDS note, the Terms &
+# Conditions (doc.terms), and a signature footer.
+KLEMCO_QUOTATION_HTML = """
+{%- set _company = frappe.get_doc("Company", doc.company) %}
+<div style="font-size:11px;color:#000;">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+    <tr>
+      <td style="width:60%;vertical-align:middle;">
+        {%- if _company.company_logo %}<img src="{{ _company.company_logo }}" style="max-height:64px;max-width:240px;">
+        {%- else %}<strong style="font-size:18px;letter-spacing:1px;">{{ _company.company_name }}</strong>{% endif %}
+      </td>
+      <td style="width:40%;vertical-align:top;text-align:right;">
+        <h2 style="margin:0;letter-spacing:2px;">QUOTATION</h2>
+        <div><strong>{{ doc.name }}</strong></div>
+        <div>Date: {{ frappe.format(doc.transaction_date, {"fieldtype":"Date"}) }}</div>
+        {%- if doc.valid_till %}<div>Valid Till: {{ frappe.format(doc.valid_till, {"fieldtype":"Date"}) }}</div>{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
+    <tr>
+      <td style="width:55%;vertical-align:top;">
+        <strong>{{ _company.company_name }}</strong><br>
+        {{ (doc.company_address_display or "") | safe }}
+        <br>GSTIN/UIN: {{ doc.company_gstin or "" }}
+        <br>UDYAM: UDYAM-PB-01-0113236 &nbsp; CIN: U46620PB2025PTC064410
+      </td>
+      <td style="width:45%;vertical-align:top;">
+        <strong>Quotation To</strong><br>
+        {{ doc.customer_name or doc.party_name }}<br>
+        {{ (doc.address_display or "") | safe }}
+      </td>
+    </tr>
+  </table>
+
+  <table class="table table-bordered" style="font-size:11px;margin-top:0;margin-bottom:2px;">
+    <thead><tr>
+      <th style="width:4%;">Sl</th>
+      {%- if doc.cs_show_product_image %}<th style="width:12%;">Image</th>{% endif %}
+      <th>Description</th>
+      <th style="width:10%;">HSN/SAC</th>
+      <th class="text-right" style="width:12%;">Qty</th>
+      <th class="text-right" style="width:14%;">Rate</th>
+      <th class="text-right" style="width:16%;">Amount</th>
+    </tr></thead>
+    <tbody>
+    {%- for row in doc.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        {%- if doc.cs_show_product_image %}
+          {%- set img = row.cs_product_image or frappe.db.get_value("Item", row.item_code, "image") %}
+          <td>{% if img %}<img src="{{ img }}" style="max-width:70px;max-height:70px;">{% endif %}</td>
+        {%- endif %}
+        <td><strong>{{ row.item_name }}</strong>{% if row.description and row.description != row.item_name %}<br><span style="color:#555;">{{ row.description | striptags }}</span>{% endif %}</td>
+        <td>{{ row.gst_hsn_code or "" }}</td>
+        <td class="text-right">{{ row.qty }} {{ row.uom }}</td>
+        <td class="text-right">{{ frappe.format(row.rate, {"fieldtype":"Currency"}, doc=doc) }}</td>
+        <td class="text-right">{{ frappe.format(row.amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+      </tr>
+    {%- endfor %}
+    </tbody>
+  </table>
+
+  <table style="width:100%;font-size:11px;margin-bottom:4px;">
+    <tr><td style="text-align:right;">Net Total</td>
+        <td style="text-align:right;width:160px;">{{ frappe.format(doc.net_total, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+    {%- for t in doc.taxes %}{% if t.tax_amount %}
+    <tr><td style="text-align:right;">{{ t.description }}</td>
+        <td style="text-align:right;">{{ frappe.format(t.tax_amount, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+    {% endif %}{% endfor %}
+    <tr><td style="text-align:right;"><strong>Grand Total</strong></td>
+        <td style="text-align:right;"><strong>{{ frappe.format(doc.grand_total, {"fieldtype":"Currency"}, doc=doc) }}</strong></td></tr>
+  </table>
+  <div style="margin-bottom:6px;">Amount in words: <strong>{{ doc.in_words or "" }}</strong></div>
+
+  {%- if doc.cs_add_tds %}
+  <div class="note" style="border:1px solid #ddd;padding:6px;margin-bottom:6px;font-size:10px;">
+    Technical Data Sheets for the quoted items are attached / available on request (TDS pack).
+  </div>
+  {%- endif %}
+
+  {%- if doc.terms %}
+  <div style="margin-top:8px;"><u>Terms &amp; Conditions</u><div style="font-size:10px;">{{ doc.terms | safe }}</div></div>
+  {%- endif %}
+
+  <table style="width:100%;margin-top:24px;"><tr>
+    <td style="font-size:10px;color:#555;">This is a computer-generated quotation.</td>
+    <td style="text-align:right;">for <strong>{{ _company.company_name }}</strong><br><br>Authorised Signatory</td>
+  </tr></table>
+</div>
+""".strip()
+
+
+def _ensure_quotation_print_format():
+    """Create (or refresh on change) the branded 'Klemco Quotation' letterhead print format."""
+    name = "Klemco Quotation"
+    if frappe.db.exists("Print Format", name):
+        pf = frappe.get_doc("Print Format", name)
+        if (pf.html or "") != KLEMCO_QUOTATION_HTML:
+            pf.html = KLEMCO_QUOTATION_HTML
+            pf.save(ignore_permissions=True)
+        return
+    frappe.get_doc({
+        "doctype": "Print Format",
+        "name": name,
+        "doc_type": "Quotation",
+        "module": "Customer Service",
+        "standard": "No",
+        "custom_format": 1,
+        "print_format_type": "Jinja",
+        "html": KLEMCO_QUOTATION_HTML,
+    }).insert(ignore_permissions=True)
 
 
 def _ensure_klemco_tax_invoice():
