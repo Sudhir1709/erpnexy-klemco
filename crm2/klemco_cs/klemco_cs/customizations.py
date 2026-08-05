@@ -800,6 +800,7 @@ def apply_customizations():
     _ensure_ic_stock_entry_taxes_field()
     _ensure_default_company()
     _ensure_pf_accounts()
+    _ensure_tax_simplification()
     _ensure_order_reports()
     _ensure_worklist_reports()
     _ensure_cs_sidebar()
@@ -817,6 +818,17 @@ def apply_customizations():
     _ensure_quotation_override()
     _ensure_plant_order_labels()
     frappe.clear_cache()
+
+
+def _ensure_tax_simplification():
+    """Hide the manual Tax Category / template pickers on Quotation, Sales Order and Sales Invoice.
+    GST is applied automatically as a flat 18% split — In-State CGST 9% + SGST 9%, Out-State IGST 18%
+    (events auto-GST) — so users don't pick a tax option."""
+    for dt in ("Quotation", "Sales Order", "Sales Invoice"):
+        for fn in ("tax_category", "taxes_and_charges"):
+            make_property_setter(doctype=dt, fieldname=fn, property="hidden", value="1",
+                                 property_type="Check", for_doctype=False,
+                                 validate_fields_for_doctype=False)
 
 
 def _ensure_pf_accounts():

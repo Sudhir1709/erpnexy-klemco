@@ -33,8 +33,10 @@ def before_validate(doc, method=None):
             "This Sales Invoice has no items to bill. If you created it from a Sales Order that is "
             "already fully invoiced, there is nothing left to bill."
         ))
-    # Optional Packaging & Forwarding charge (before tax, GST-inclusive).
+    # Auto-GST (18% split) for a standalone invoice, then the optional P&F charge (before tax).
+    from klemco_cs.events.sales_order import _auto_gst_tax_category
     from klemco_cs.events.pf import reconcile_pf
+    _auto_gst_tax_category(doc)
     reconcile_pf(doc)
 
 
