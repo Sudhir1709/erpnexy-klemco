@@ -22,6 +22,52 @@
   if (window.__klemcoAIWidget) return;
   window.__klemcoAIWidget = true;
 
+  // ── "Documents" button — list every file attached to this record (separate from Connections) ──
+  function klemcoShowDocuments(frm) {
+    frappe.call({
+      method: "klemco_cs.documents.list_document_files",
+      args: { doctype: frm.doctype, name: frm.doc.name },
+      callback(r) {
+        const files = r.message || [];
+        const esc = frappe.utils.escape_html;
+        const body = files.length
+          ? files.map((f) => {
+              const size = f.file_size ? Math.round(f.file_size / 1024) + " KB" : "";
+              const lock = f.is_private ? " 🔒" : "";
+              const when = f.creation ? frappe.datetime.str_to_user(f.creation) : "";
+              return `<tr>
+                <td style="padding:4px 8px;">📄 <a href="${esc(f.file_url)}" target="_blank">${esc(f.file_name || f.file_url)}</a>${lock}</td>
+                <td style="padding:4px 8px;color:#666;white-space:nowrap;">${size}</td>
+                <td style="padding:4px 8px;color:#666;">${esc(f.owner || "")}</td>
+                <td style="padding:4px 8px;color:#666;white-space:nowrap;">${esc(when)}</td></tr>`;
+            }).join("")
+          : `<tr><td colspan="4" style="padding:12px;color:#888;">No files attached to this document.</td></tr>`;
+        const html = `<div style="max-height:60vh;overflow:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="text-align:left;border-bottom:1px solid #ddd;color:#555;">
+              <th style="padding:4px 8px;">File</th><th style="padding:4px 8px;">Size</th>
+              <th style="padding:4px 8px;">Uploaded by</th><th style="padding:4px 8px;">When</th></tr></thead>
+            <tbody>${body}</tbody></table></div>`;
+        const d = new frappe.ui.Dialog({ title: __("Files attached to {0}", [frm.doc.name]), size: "large" });
+        d.$body.html(html);
+        d.show();
+      },
+    });
+  }
+
+  (function klemcoDocumentsButton() {
+    if (!(window.frappe && frappe.ui && frappe.ui.form)) return;
+    ["Sales Order", "Quotation", "Sales Invoice", "Delivery Note", "Purchase Order",
+     "Purchase Invoice", "Purchase Receipt", "Payment Entry", "KM Order"].forEach((dt) => {
+      frappe.ui.form.on(dt, {
+        refresh(frm) {
+          if (frm.is_new()) return;
+          frm.add_custom_button(__("Attached Files"), () => klemcoShowDocuments(frm));
+        },
+      });
+    });
+  })();
+
   const API = "/api/method/klemco_cs.ai_assistant.api.";
   const history = [];
 

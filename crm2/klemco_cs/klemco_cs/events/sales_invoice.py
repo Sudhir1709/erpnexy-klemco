@@ -8,10 +8,25 @@ from frappe import _
 
 COD_TYPE = "COD"
 
+# Dispatch-documents checklist (goods invoices). (name, mandatory) — 8 mandatory + 1 optional.
+DISPATCH_CHECKLIST = [
+    ("Photos of boxes", 1),
+    ("MTC for all parts", 1),
+    ("Raw material MTC of all", 1),
+    ("Traceability report", 1),
+    ("E-way bill Part A", 1),
+    ("Packaging List", 1),
+    ("LR copy", 1),
+    ("Weight Receipt", 1),
+    ("Vehicle photo at dispatch", 0),
+]
+
 
 def validate(doc, method=None):
     doc.custom_is_cod = 1 if _is_cod(doc) else 0
     _require_so_for_stock_items(doc)
+    _seed_dispatch_checklist(doc)
+    _set_dispatch_status(doc)
 
 
 def _require_so_for_stock_items(doc):
@@ -35,6 +50,11 @@ def _require_so_for_stock_items(doc):
 
 
 def before_submit(doc, method=None):
+    _require_dispatch_docs(doc)
+    _require_cod_cheque(doc)
+
+
+def _require_cod_cheque(doc):
     if not _is_cod(doc):
         return
     missing = [
@@ -48,6 +68,51 @@ def before_submit(doc, method=None):
         frappe.throw(_(
             "COD customer: capture cheque details before submitting — missing {0} "
             "(FR-DP-11 / BR-DP-06)."
+        ).format(", ".join(missing)))
+
+
+# ── Dispatch-documents checklist ────────────────────────────────────────────────────────────────
+def _dispatch_applicable(doc):
+    """Applies only to invoices that ship goods — not returns, not POS, and only when at least one
+    line is a stock item (a pure service/freight invoice has nothing to photograph/pack)."""
+    if doc.get("is_return") or doc.get("is_pos"):
+        return False
+    return any(
+        d.item_code and frappe.get_cached_value("Item", d.item_code, "is_stock_item")
+        for d in doc.get("items") or []
+    )
+
+
+def _seed_dispatch_checklist(doc):
+    """Populate the checklist rows on a fresh goods invoice (server-side safety net; the client
+    seeds them too for immediate visibility). No-op if rows already exist or not applicable."""
+    if not _dispatch_applicable(doc) or doc.get("cs_dispatch_documents"):
+        return
+    for name, mandatory in DISPATCH_CHECKLIST:
+        doc.append("cs_dispatch_documents", {"document_name": name, "mandatory": mandatory})
+
+
+def _missing_dispatch_docs(doc):
+    return [
+        r.document_name for r in doc.get("cs_dispatch_documents") or []
+        if r.mandatory and not r.is_provided
+    ]
+
+
+def _set_dispatch_status(doc):
+    if not _dispatch_applicable(doc):
+        doc.cs_dispatch_docs_status = "Complete"
+        return
+    doc.cs_dispatch_docs_status = "Incomplete" if _missing_dispatch_docs(doc) else "Complete"
+
+
+def _require_dispatch_docs(doc):
+    if not _dispatch_applicable(doc):
+        return
+    missing = _missing_dispatch_docs(doc)
+    if missing:
+        frappe.throw(_(
+            "Dispatch documents incomplete — provide/tick these before submitting: {0}."
         ).format(", ".join(missing)))
 
 

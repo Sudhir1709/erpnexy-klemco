@@ -15,6 +15,14 @@ frappe.ui.form.on('Sales Invoice', {
         if (!frm.is_new()) {
             frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice (Sales Invoice)'));
         }
+        // Dispatch-documents checklist reminder (goods invoices; rows are seeded on save).
+        if (frm.doc.docstatus === 0 && (frm.doc.cs_dispatch_documents || []).length
+            && frm.doc.cs_dispatch_docs_status === 'Incomplete') {
+            frm.dashboard.set_headline_alert(
+                __('Dispatch documents incomplete — tick every required document (attach the file if you have it) before submitting.'),
+                'orange'
+            );
+        }
     },
 
     customer(frm) {
@@ -41,6 +49,16 @@ frappe.ui.form.on('Sales Invoice', {
                      indicator: 'blue'}, 6);
             }
         });
+    },
+});
+
+// Attaching a file to a checklist row marks that document as Provided automatically.
+frappe.ui.form.on('CS Dispatch Document', {
+    file(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (row.file && !row.is_provided) {
+            frappe.model.set_value(cdt, cdn, 'is_provided', 1);
+        }
     },
 });
 

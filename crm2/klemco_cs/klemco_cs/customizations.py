@@ -251,6 +251,41 @@ CUSTOM_FIELDS = {
             "fieldtype": "Attach",
             "insert_after": "custom_cheque_amount",
         },
+        # Dispatch-documents checklist (goods invoices) — enforced in events/sales_invoice.py.
+        {
+            "fieldname": "cs_dispatch_section",
+            "label": "Dispatch Documents",
+            "fieldtype": "Section Break",
+            "insert_after": "custom_cheque_copy",
+            "collapsible": 1,
+            "description": "Documents required before finalizing a goods invoice. Tick each (attach "
+                           "the file if you have it). All except 'Vehicle photo at dispatch' are "
+                           "mandatory before the invoice can be submitted.",
+        },
+        {
+            "fieldname": "cs_dispatch_docs_status",
+            "label": "Documents Status",
+            "fieldtype": "Select",
+            "options": "Incomplete\nComplete",
+            "default": "Incomplete",
+            "insert_after": "cs_dispatch_section",
+            "read_only": 1,
+            "translatable": 0,
+            "in_standard_filter": 1,
+            "allow_on_submit": 1,
+            "description": "Auto-set: Complete when all mandatory dispatch documents are ticked.",
+        },
+        {
+            "fieldname": "cs_dispatch_documents",
+            "label": "Documents Checklist",
+            "fieldtype": "Table",
+            "options": "CS Dispatch Document",
+            "insert_after": "cs_dispatch_docs_status",
+            "allow_on_submit": 1,
+            "description": "Photos of boxes, MTC for all parts, Raw material MTC, Traceability report, "
+                           "E-way bill Part A, Packaging List, LR copy, Weight Receipt (mandatory) + "
+                           "Vehicle photo at dispatch (optional).",
+        },
     ],
 
     # ── Item: KM-managed triple approval (BR-KM-02 / CR-18) ──
@@ -970,6 +1005,7 @@ SIDEBAR_STRUCTURE = [
     _sb("Approvals", "shield"),
     _l("Orders on Credit Hold", "Report", "Orders on Credit Hold"),
     _l("Pending for Discount Approval", "Report", "Pending Discount Approvals"),
+    _l("Invoices — Docs Incomplete", "Report", "Sales Invoices — Documents Incomplete"),
     _sb("Plant Orders", "organization"),
     _l("New Plant Order", "URL", url="/desk/km-order/new"),
     _l("All Plant Orders", "DocType", "KM Order"),
@@ -1054,6 +1090,11 @@ WORKLIST_REPORTS = {
         ["customer_name", "status", "transaction_date", "delivery_date", "grand_total",
          "per_delivered", "per_billed"],
         [["Sales Order", "status", "not in", ["Completed", "Cancelled", "Closed"]]]),
+    # Draft invoices still missing mandatory dispatch documents (goods invoices).
+    "Sales Invoices — Documents Incomplete": ("Sales Invoice",
+        ["customer_name", "grand_total", "posting_date", "cs_dispatch_docs_status"],
+        [["Sales Invoice", "cs_dispatch_docs_status", "=", "Incomplete"],
+         ["Sales Invoice", "docstatus", "=", 0]]),
 }
 
 

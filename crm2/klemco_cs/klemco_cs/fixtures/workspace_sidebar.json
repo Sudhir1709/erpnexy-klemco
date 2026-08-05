@@ -347,6 +347,23 @@
     "url": ""
    },
    {
+    "child": 1,
+    "collapsible": 1,
+    "display_depends_on": null,
+    "filters": null,
+    "icon": "",
+    "indent": 0,
+    "keep_closed": 0,
+    "label": "Invoices — Docs Incomplete",
+    "link_to": "Sales Invoices — Documents Incomplete",
+    "link_type": "Report",
+    "navigate_to_tab": null,
+    "route_options": null,
+    "show_arrow": 0,
+    "type": "Link",
+    "url": ""
+   },
+   {
     "child": 0,
     "collapsible": 1,
     "display_depends_on": null,
@@ -500,7 +517,7 @@
     "url": ""
    }
   ],
-  "modified": "2026-08-04 12:20:14.865520",
+  "modified": "2026-08-05 19:53:55.901740",
   "module": "Customer Service",
   "module_onboarding": null,
   "name": "Customer Service",
