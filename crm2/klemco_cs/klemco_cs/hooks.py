@@ -72,6 +72,7 @@ doc_events = {
         'on_submit': 'klemco_cs.notifications.order_dispatched',
     },
     'Sales Invoice': {
+        'before_validate': 'klemco_cs.events.sales_invoice.before_validate',
         'validate': 'klemco_cs.events.sales_invoice.validate',
         'before_submit': 'klemco_cs.events.sales_invoice.before_submit',
     },

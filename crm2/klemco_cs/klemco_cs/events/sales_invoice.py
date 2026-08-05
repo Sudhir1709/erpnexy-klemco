@@ -22,6 +22,19 @@ DISPATCH_CHECKLIST = [
 ]
 
 
+def before_validate(doc, method=None):
+    """Reject a zero-item invoice with a clear message. Creating an invoice from a fully-billed /
+    Completed Sales Order maps NO item rows (nothing left to bill) but still copies a tax row; that
+    empty-but-taxed invoice otherwise crashes India Compliance's GST validation
+    (validate_item_wise_tax_detail iterates a None _item_wise_tax_details). Runs before validate()
+    so it stops the bad doc before IC's hook."""
+    if not (doc.get("items") or []):
+        frappe.throw(_(
+            "This Sales Invoice has no items to bill. If you created it from a Sales Order that is "
+            "already fully invoiced, there is nothing left to bill."
+        ))
+
+
 def validate(doc, method=None):
     doc.custom_is_cod = 1 if _is_cod(doc) else 0
     _require_so_for_stock_items(doc)
