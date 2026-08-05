@@ -1206,6 +1206,7 @@ SIDEBAR_STRUCTURE = [
     _l("New Plant Order", "URL", url="/desk/km-order/new"),
     _l("All Plant Orders", "DocType", "KM Order"),
     _l("Plant Orders status", "Report", "Klemco Orders — Created"),
+    _l("Plant Orders — Items", "Report", "Plant Order Items"),
     _sb("Configuration", "setting"),
     _l("Category Mapping", "DocType", "CS Complaint Category Map"),
     _l("Discount Matrix", "DocType", "CS Discount Matrix"),

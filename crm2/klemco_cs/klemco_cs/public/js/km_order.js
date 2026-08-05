@@ -13,6 +13,13 @@ frappe.ui.form.on('KM Order', {
         }
         _stage_button(frm);
         _attachments_ui(frm);
+        // Download the item lines as Excel.
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Download Items (Excel)'), () => {
+                window.open('/api/method/klemco_cs.customer_service.doctype.km_order.km_order.download_items_excel?km_order='
+                    + encodeURIComponent(frm.doc.name), '_blank');
+            });
+        }
         // Generate the KM order's purchase bill (Purchase Invoice at the item PURCHASE rate).
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('Generate Purchase Bill'), () => {

@@ -202,3 +202,23 @@ def make_km_order(source_name, target_doc=None):
         set_missing,
     )
     return doc
+
+
+@frappe.whitelist()
+def download_items_excel(km_order):
+    """Download this Plant Order's item lines as an Excel (.xlsx) file."""
+    if not frappe.has_permission("KM Order", "read", doc=km_order):
+        frappe.throw(_("Not permitted to read Plant Order {0}").format(km_order), frappe.PermissionError)
+    from frappe.utils.xlsxutils import make_xlsx
+    doc = frappe.get_doc("KM Order", km_order)
+    rows = [["Item Code", "Item Name", "SO Qty", "KM Qty", "UOM",
+             "Delivery Date", "Available Date (Plant)", "Plant Response"]]
+    for it in doc.items:
+        rows.append([
+            it.item_code, it.item_name, it.so_qty, it.km_qty, it.uom,
+            str(it.delivery_date or ""), str(it.cs_available_date or ""), it.cs_plant_date_status or "",
+        ])
+    xlsx = make_xlsx(rows, "Plant Order Items")
+    frappe.response["filename"] = "{0}-items.xlsx".format(km_order)
+    frappe.response["filecontent"] = xlsx.getvalue()
+    frappe.response["type"] = "binary"
