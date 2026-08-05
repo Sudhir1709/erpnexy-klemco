@@ -65,8 +65,18 @@ def before_submit(doc, method=None):
 
 
 # ── BR-OE-01  Discount Matrix ─────────────────────────────────────────────────
+def _doc_customer(doc):
+    """The customer of a Sales Order (customer) or a Quotation (party_name when quotation_to=Customer)."""
+    if doc.get("customer"):
+        return doc.get("customer")
+    if doc.get("quotation_to") == "Customer" and doc.get("party_name"):
+        return doc.get("party_name")
+    return None
+
+
 def _customer_type(doc):
-    return frappe.db.get_value("Customer", doc.customer, "custom_klemco_customer_type") or "Regular"
+    cust = _doc_customer(doc)
+    return (cust and frappe.db.get_value("Customer", cust, "custom_klemco_customer_type")) or "Regular"
 
 
 DISCOUNT_APPROVERS = {"Sales Head", "Sales Manager", "System Manager"}
@@ -79,7 +89,7 @@ def _apply_discount_matrix(doc):
     before_submit (the blocking CS Sales Order Workflow is retired in favour of this
     field-based approval, mirroring the RC-deviation flow)."""
     try:
-        if not doc.get("customer"):
+        if not _doc_customer(doc):
             return
         from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
         general = get_max_discount(_customer_type(doc), None)
@@ -133,7 +143,7 @@ def set_discount_decision(sales_order, decision):
 def _lines_exceeding_matrix(doc):
     """Item codes whose line discount exceeds their (customer-type, item-group) cap."""
     try:
-        if not doc.get("customer"):
+        if not _doc_customer(doc):
             return []
         from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
         ctype = _customer_type(doc)

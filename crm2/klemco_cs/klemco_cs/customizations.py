@@ -451,6 +451,82 @@ _QUOTATION_STATUS_FIELDS = [
 ]
 CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_STATUS_FIELDS)
 
+# ── Quotation: Discount Matrix cap + Sales-Head approval (mirrors the Sales Order gate) ──
+_QUOTATION_DISCOUNT_FIELDS = [
+    {
+        "fieldname": "cs_discount_threshold",
+        "label": "Discount Threshold (%)",
+        "fieldtype": "Percent",
+        "insert_after": "cs_not_converted_reason",
+        "read_only": 1,
+        "description": "Maximum discount before Sales-Head approval (from the Discount Matrix for "
+                       "this customer type).",
+    },
+    {
+        "fieldname": "cs_discount_approval_status",
+        "label": "Discount Approval Status",
+        "fieldtype": "Select",
+        "options": "\nNot Required\nDiscount Approval — Sales Head\nApproved\nRejected",
+        "default": "Not Required",
+        "insert_after": "cs_discount_threshold",
+        "read_only": 1,
+        "translatable": 0,
+        "in_standard_filter": 1,
+    },
+    {
+        "fieldname": "cs_discount_approved_by",
+        "label": "Discount Approved By",
+        "fieldtype": "Link",
+        "options": "User",
+        "insert_after": "cs_discount_approval_status",
+        "read_only": 1,
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_DISCOUNT_FIELDS)
+
+# ── Quotation: optional Product Image on the print (manual image per line) + TDS datasheet merge ──
+_QUOTATION_DOC_FIELDS = [
+    {
+        "fieldname": "cs_show_product_image",
+        "label": "Show Product Image",
+        "fieldtype": "Check",
+        "insert_after": "order_type",
+        "description": "Show a product image column on the quotation printout (upload the image on "
+                       "each item row below).",
+    },
+    {
+        "fieldname": "cs_add_tds",
+        "label": "TDS for Quotation (attach datasheets)",
+        "fieldtype": "Check",
+        "insert_after": "cs_show_product_image",
+        "description": "Merge the Technical Data Sheets of the quotation's items into one PDF "
+                       "(use the 'Download TDS Pack' button). Set each item's TDS on the Item master.",
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_DOC_FIELDS)
+
+# Per-line manual product image on the quotation grid.
+CUSTOM_FIELDS["Quotation Item"] = [
+    {
+        "fieldname": "cs_product_image",
+        "label": "Product Image",
+        "fieldtype": "Attach Image",
+        "insert_after": "image",
+        "description": "Optional image shown on the quotation printout when 'Show Product Image' is on.",
+    },
+]
+
+# Technical Data Sheet (TDS) PDF on the Item master — the 'datasheet bank'.
+CUSTOM_FIELDS["Item"] = CUSTOM_FIELDS.get("Item", []) + [
+    {
+        "fieldname": "cs_tds_file",
+        "label": "Technical Data Sheet (PDF)",
+        "fieldtype": "Attach",
+        "insert_after": "image",
+        "description": "Product Technical Data Sheet (PDF). Merged into the TDS pack on quotations.",
+    },
+]
+
 
 # Delivery Note + Sales Order: make the per-item Required Delivery Date picker reject the past
 # client-side as well (server-side enforced in events). Property setter sets min on the field
