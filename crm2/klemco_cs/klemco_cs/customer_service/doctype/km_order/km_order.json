@@ -18,6 +18,7 @@
   "supplier",
   "col_break_1",
   "status",
+  "cs_plant_response",
   "km_tat_date",
   "km_delivery_date",
   "transfer_billing_status",
@@ -75,10 +76,19 @@
    "read_only": 1
   },
   {
+   "fieldname": "cs_plant_response",
+   "fieldtype": "Select",
+   "label": "Plant Response (whole order)",
+   "options": "\nAccepted\nNew Date Proposed",
+   "description": "Accept the requested delivery dates for the whole order, or propose a new Goods Available Date — applied to every line below. Override individual lines afterwards if needed.",
+   "allow_on_submit": 1,
+   "in_list_view": 1
+  },
+  {
    "fieldname": "km_tat_date",
    "fieldtype": "Date",
    "label": "Goods Available Date",
-   "description": "Plant enters the date the goods will be available after production.",
+   "description": "Proposed date the goods will be available after production. Applied to every line when Plant Response = New Date Proposed.",
    "allow_on_submit": 1,
    "in_list_view": 1
   },
