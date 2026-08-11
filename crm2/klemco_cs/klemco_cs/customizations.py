@@ -1243,6 +1243,7 @@ SIDEBAR_STRUCTURE = [
     _sb("Approvals", "shield"),
     _l("Orders on Credit Hold", "Report", "Orders on Credit Hold"),
     _l("Pending for Discount Approval", "Report", "Pending Discount Approvals"),
+    _l("Quotations — Pending Discount", "Report", "Quotations — Pending Discount Approval"),
     _l("Invoices — Docs Incomplete", "Report", "Sales Invoices — Documents Incomplete"),
     _sb("Plant Orders", "organization"),
     _l("New Plant Order", "URL", url="/desk/km-order/new"),
@@ -1334,6 +1335,11 @@ WORKLIST_REPORTS = {
         ["customer_name", "grand_total", "posting_date", "cs_dispatch_docs_status"],
         [["Sales Invoice", "cs_dispatch_docs_status", "=", "Incomplete"],
          ["Sales Invoice", "docstatus", "=", 0]]),
+    # Draft quotations waiting for Sales-Head discount approval.
+    "Quotations — Pending Discount Approval": ("Quotation",
+        ["party_name", "grand_total", "cs_discount_threshold", "transaction_date"],
+        [["Quotation", "cs_discount_approval_status", "=", "Discount Approval — Sales Head"],
+         ["Quotation", "docstatus", "=", 0]]),
 }
 
 
