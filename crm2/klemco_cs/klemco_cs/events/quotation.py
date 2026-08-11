@@ -36,6 +36,26 @@ def before_submit(doc, method=None):
         ))
 
 
+# Block printing / PDF of a quotation whose discount isn't approved. Runs from Frappe's print
+# pipeline (printview.py -> run_method("before_print")), so it covers the print preview, physical
+# print, and PDF/download — even a direct /printview or download_pdf URL.
+_PRINT_BLOCKED = ("Discount Approval — Sales Head", "Rejected")
+
+
+def before_print(doc, method=None, *args, **kwargs):
+    status = doc.get("cs_discount_approval_status")
+    if status == "Rejected":
+        frappe.throw(_(
+            "This quotation's discount was <b>Rejected</b> — revise it within the allowed limit "
+            "(or get it approved) before printing or sending it (BR-OE-01)."
+        ), title=_("Print blocked"))
+    if status == "Discount Approval — Sales Head":
+        frappe.throw(_(
+            "This quotation's discount is <b>pending Sales-Head approval</b> — it cannot be printed "
+            "or downloaded as a PDF until the discount is approved (BR-OE-01)."
+        ), title=_("Print blocked"))
+
+
 @frappe.whitelist()
 def set_discount_decision(quotation, decision):
     """Sales Head / Sales Manager approves or rejects an over-cap discount on a Quotation (BR-OE-01)."""

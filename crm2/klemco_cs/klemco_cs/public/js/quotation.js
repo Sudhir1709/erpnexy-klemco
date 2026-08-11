@@ -29,9 +29,15 @@ frappe.ui.form.on('Quotation', {
 // Discount over the matrix cap → Sales-Head approval banner + Approve/Reject actions.
 function _discount_ui(frm) {
     if (frm.is_new()) return;
-    if (frm.doc.cs_discount_approval_status !== 'Discount Approval — Sales Head') return;
+    const st = frm.doc.cs_discount_approval_status;
+    if (st === 'Rejected') {
+        frm.dashboard.set_headline_alert(
+            __('🔒 Discount Rejected — revise it within the allowed limit before printing/sending. Print & PDF are disabled.'),
+            'red');
+    }
+    if (st !== 'Discount Approval — Sales Head') return;
     frm.dashboard.set_headline_alert(
-        __('⏳ Discount pending Sales-Head approval (cap {0}%). This quotation cannot be submitted until approved.',
+        __('⏳ Discount pending Sales-Head approval (cap {0}%). This quotation cannot be submitted, printed or sent as PDF until approved.',
            [frm.doc.cs_discount_threshold || 0]), 'orange');
     const roles = frappe.user_roles || [];
     if (['Sales Head', 'Sales Manager', 'System Manager'].some((r) => roles.includes(r))) {

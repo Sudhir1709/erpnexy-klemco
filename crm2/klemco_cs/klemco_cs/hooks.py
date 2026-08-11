@@ -80,6 +80,7 @@ doc_events = {
         'before_validate': 'klemco_cs.events.quotation.before_validate',
         'validate': 'klemco_cs.events.quotation.validate',
         'before_submit': 'klemco_cs.events.quotation.before_submit',
+        'before_print': 'klemco_cs.events.quotation.before_print',
     },
     'Customer': {
         'after_insert': 'klemco_cs.notifications.customer_registered',
