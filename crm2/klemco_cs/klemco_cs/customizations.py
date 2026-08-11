@@ -406,9 +406,10 @@ _PF_FIELDS = [
         "fieldname": "cs_add_pf",
         "label": "Add Packaging & Forwarding (P&F)",
         "fieldtype": "Check",
+        "default": "1",
         "insert_after": "taxes_and_charges",
         "description": "Add a Packaging & Forwarding charge (% of net total) before tax — GST is "
-                       "charged on it. Applied when you Save.",
+                       "charged on it. On by default; uncheck to skip. Applied when you Save.",
     },
     {
         "fieldname": "cs_pf_rate",
