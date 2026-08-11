@@ -505,6 +505,26 @@ _QUOTATION_DOC_FIELDS = [
 ]
 CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_DOC_FIELDS)
 
+# ── Quotation: Sales Team table (like the Sales Order) — standard field + child doctype, so ERPNext
+# computes each row's Contribution to Net Amount from the Contribution %. ──
+_QUOTATION_SALES_TEAM_FIELDS = [
+    {
+        "fieldname": "cs_sales_team_section",
+        "label": "Sales Team",
+        "fieldtype": "Section Break",
+        "insert_after": "additional_info_section",
+        "collapsible": 1,
+    },
+    {
+        "fieldname": "sales_team",
+        "label": "Sales Team",
+        "fieldtype": "Table",
+        "options": "Sales Team",
+        "insert_after": "cs_sales_team_section",
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_SALES_TEAM_FIELDS)
+
 # Per-line manual product image on the quotation grid.
 CUSTOM_FIELDS["Quotation Item"] = [
     {
