@@ -452,6 +452,21 @@ _QUOTATION_STATUS_FIELDS = [
 ]
 CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_STATUS_FIELDS)
 
+# ── Quotation: back-link to the Sales Enquiry it was created from (set by the mapper). On save,
+# events/quotation.on_update backfills the enquiry's Quotation number/value/date + status. ──
+_QUOTATION_ENQUIRY_FIELDS = [
+    {
+        "fieldname": "cs_sales_enquiry",
+        "label": "Sales Enquiry",
+        "fieldtype": "Link",
+        "options": "Sales Enquiry",
+        "insert_after": "cs_conversion_status",
+        "read_only": 1,
+        "description": "The enquiry this quotation was raised from (auto-set via 'Create Quotation').",
+    },
+]
+CUSTOM_FIELDS["Quotation"] = CUSTOM_FIELDS["Quotation"] + list(_QUOTATION_ENQUIRY_FIELDS)
+
 # ── Quotation: Discount Matrix cap + Sales-Head approval (mirrors the Sales Order gate) ──
 _QUOTATION_DISCOUNT_FIELDS = [
     {
@@ -1227,6 +1242,11 @@ SIDEBAR_STRUCTURE = [
     _sb("Complaint", "alert-circle"),
     _l("New Complaint", "URL", url="/desk/cs-complaint/new"),
     _l("All Complaint", "DocType", "CS Complaint"),
+    _sb("Enquiries", "unread"),
+    _l("New Sales Enquiry", "URL", url="/desk/sales-enquiry/new"),
+    _l("All Enquiries", "DocType", "Sales Enquiry"),
+    _l("Open Enquiries", "Report", "Open Sales Enquiries"),
+    _l("Enquiries — Created", "Report", "Sales Enquiries — Created"),
     _sb("Order Creation", "sell"),
     _l("New Sales Order", "URL", url="/desk/sales-order/new"),
     _l("Open Sales Order", "Report", "Open Sales Orders"),
@@ -1274,6 +1294,10 @@ ORDER_REPORTS = {
         ["party_name", "status", "transaction_date", "valid_till", "grand_total"]),
     "Klemco Orders — Created": ("KM Order",
         ["customer", "status", "linked_sales_order"]),
+    # The enquiry "Report form" view: enquiry + the quotation it produced.
+    "Sales Enquiries — Created": ("Sales Enquiry",
+        ["project_name", "customer", "party_name", "type_of_enquiry", "zone", "status",
+         "quotation", "quotation_value"]),
 }
 
 
@@ -1340,6 +1364,10 @@ WORKLIST_REPORTS = {
         ["party_name", "grand_total", "cs_discount_threshold", "transaction_date"],
         [["Quotation", "cs_discount_approval_status", "=", "Discount Approval — Sales Head"],
          ["Quotation", "docstatus", "=", 0]]),
+    # Enquiries still open (not yet quoted, converted or closed).
+    "Open Sales Enquiries": ("Sales Enquiry",
+        ["project_name", "customer", "party_name", "sales_person", "type_of_enquiry", "enquiry_date"],
+        [["Sales Enquiry", "status", "=", "Open"]]),
 }
 
 

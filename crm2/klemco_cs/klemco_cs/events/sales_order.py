@@ -229,6 +229,11 @@ def _mark_source_quotations_accepted(doc):
             if frappe.db.exists("Quotation", q) and \
                     frappe.db.get_value("Quotation", q, "cs_conversion_status") != "Accepted":
                 frappe.db.set_value("Quotation", q, "cs_conversion_status", "Accepted")
+            # If that quotation came from a Sales Enquiry, mark the enquiry Converted (won).
+            enq = frappe.db.get_value("Quotation", q, "cs_sales_enquiry")
+            if enq and frappe.db.exists("Sales Enquiry", enq) and \
+                    frappe.db.get_value("Sales Enquiry", enq, "status") != "Converted":
+                frappe.db.set_value("Sales Enquiry", enq, "status", "Converted")
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Klemco quotation auto-accept failed")
 

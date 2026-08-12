@@ -145,6 +145,36 @@ def customer_registered(doc, method=None):
         frappe.log_error(frappe.get_traceback(), "Klemco new-customer alert failed")
 
 
+# ── New sales enquiry logged → CS / Sales / Marketing team (after_insert) ──
+_ENQUIRY_ALERT_ROLES = ["CS Manager", "CS Executive", "Sales Manager", "Marketing Manager"]
+
+
+def enquiry_registered(doc, method=None):
+    """Alert the CS / Sales / Marketing team when a new Sales Enquiry is logged — email + bell.
+    Best-effort: never blocks the enquiry save."""
+    party = doc.get("customer") or doc.get("party_name") or ""
+    subject = _("New sales enquiry: {0}").format(doc.get("project_name") or doc.name)
+    body = _(
+        "A new sales enquiry <b>{0}</b> ({1}) has been logged — type <b>{2}</b>, party {3}. "
+        "Please follow up and raise a quotation."
+    ).format(doc.get("project_name") or doc.name, doc.name, doc.get("type_of_enquiry") or "-", party or "-")
+    _safe_sendmail(_role_user_emails(_ENQUIRY_ALERT_ROLES), subject, body, "Sales Enquiry", doc.name)
+    try:
+        users = [u for u in _role_users(_ENQUIRY_ALERT_ROLES) if u != frappe.session.user]
+        if users:
+            from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+            enqueue_create_notification(users, {
+                "type": "Alert",
+                "document_type": "Sales Enquiry",
+                "document_name": doc.name,
+                "subject": subject,
+                "from_user": frappe.session.user,
+                "email_content": body,
+            })
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco new-enquiry alert failed")
+
+
 def _alert_approvers(doc, kind):
     """Email + in-app notification + to-do assignment to the approver group. Each channel is
     best-effort and isolated so a notification failure never blocks the order save."""

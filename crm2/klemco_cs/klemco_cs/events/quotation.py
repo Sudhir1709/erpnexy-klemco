@@ -22,6 +22,30 @@ def validate(doc, method=None):
     _flag_discount_approval(doc)
 
 
+def on_update(doc, method=None):
+    # If this quotation was raised from a Sales Enquiry, backfill the enquiry's Report-form
+    # fields (Quotation number / value / submission date) and flag it "Quotation Created".
+    # Best-effort — never block the quotation save.
+    enq = doc.get("cs_sales_enquiry")
+    if not enq:
+        return
+    try:
+        if not frappe.db.exists("Sales Enquiry", enq):
+            return
+        cur = frappe.db.get_value("Sales Enquiry", enq, "status")
+        vals = {
+            "quotation": doc.name,
+            "quotation_value": doc.get("grand_total"),
+            "quotation_date": doc.get("transaction_date"),
+        }
+        # Don't downgrade an already-Converted enquiry back to "Quotation Created".
+        if cur not in ("Converted", "Closed — Lost"):
+            vals["status"] = "Quotation Created"
+        frappe.db.set_value("Sales Enquiry", enq, vals)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco enquiry backfill failed")
+
+
 def before_submit(doc, method=None):
     status = doc.get("cs_discount_approval_status")
     if status == _PENDING:

@@ -56,6 +56,7 @@ doctype_js = {
     'CS Complaint': 'public/js/cs_complaint.js',
     'KM Order': 'public/js/km_order.js',
     'Payment Terms Template': 'public/js/payment_terms_template.js',
+    'Sales Enquiry': 'public/js/sales_enquiry.js',
 }
 
 # Server-side validation / automation for the v1.3 feedback items.
@@ -79,11 +80,15 @@ doc_events = {
     'Quotation': {
         'before_validate': 'klemco_cs.events.quotation.before_validate',
         'validate': 'klemco_cs.events.quotation.validate',
+        'on_update': 'klemco_cs.events.quotation.on_update',
         'before_submit': 'klemco_cs.events.quotation.before_submit',
         'before_print': 'klemco_cs.events.quotation.before_print',
     },
     'Customer': {
         'after_insert': 'klemco_cs.notifications.customer_registered',
+    },
+    'Sales Enquiry': {
+        'after_insert': 'klemco_cs.notifications.enquiry_registered',
     },
     'Item': {
         'validate': 'klemco_cs.events.item.validate',
