@@ -60,6 +60,11 @@ doctype_js = {
     'Address': 'public/js/address.js',
 }
 
+# List-view scripts (indicator overrides etc.) layered onto stock doctypes.
+doctype_list_js = {
+    'Quotation': 'public/js/quotation_list.js',
+}
+
 # Server-side validation / automation for the v1.3 feedback items.
 doc_events = {
     'Sales Order': {
