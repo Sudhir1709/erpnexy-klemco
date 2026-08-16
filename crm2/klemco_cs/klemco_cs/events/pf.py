@@ -24,6 +24,15 @@ def _gst_accounts(company):
         return set()
 
 
+def _cost_center(doc):
+    """A cost center for the P&F charge row — the doc's own, else the company default. The P&F
+    account is a P&L (Expense) account, so its tax row needs a cost center or submit fails."""
+    return doc.get("cost_center") or (
+        frappe.get_cached_value("Company", doc.get("company"), "cost_center")
+        if doc.get("company") else None
+    )
+
+
 def _pf_account(company):
     """The Packaging & Forwarding charge ledger for the company (created by
     customizations._ensure_pf_accounts); falls back to the Freight ledger."""
@@ -86,7 +95,8 @@ def reconcile_pf(doc):
 
     rate = flt(doc.get("cs_pf_rate")) or DEFAULT_PF_RATE
     pf = {"charge_type": "On Net Total", "account_head": account,
-          "description": PF_DESC, "rate": rate, "included_in_print_rate": 0}
+          "description": PF_DESC, "rate": rate, "included_in_print_rate": 0,
+          "cost_center": _cost_center(doc)}
 
     ordered = [pf]
     for t in rows:
