@@ -140,8 +140,24 @@ def set_discount_decision(sales_order, decision):
     return decision
 
 
+def _approved_quotation_line_discount(row):
+    """The discount % already approved on the SO line's source quotation line, else None. Only when
+    that quotation's discount was Approved (or Not Required — it never needed approval). Lets an SO
+    inherit the quote's sign-off, so re-approval is needed only when a line's discount is raised
+    ABOVE what was quoted (BR-OE-01)."""
+    q, qi = row.get("prevdoc_docname"), row.get("quotation_item")
+    if not q or not qi:
+        return None
+    if frappe.db.get_value("Quotation", q, "cs_discount_approval_status") not in ("Approved", "Not Required"):
+        return None
+    d = frappe.db.get_value("Quotation Item", qi, "discount_percentage")
+    return flt(d) if d is not None else None
+
+
 def _lines_exceeding_matrix(doc):
-    """Item codes whose line discount exceeds their (customer-type, item-group) cap."""
+    """Item codes whose line discount exceeds their (customer-type, item-group) cap — but a line that
+    is within the already-approved discount from its source quotation line is not counted (no
+    re-approval for the same/lower discount; only an increment above the quote triggers approval)."""
     try:
         if not _doc_customer(doc):
             return []
@@ -157,7 +173,12 @@ def _lines_exceeding_matrix(doc):
             cap = get_max_discount(ctype, ig)
             if cap is None:
                 cap = general
-            if cap is not None and line_disc > cap:
+            # Inherit an already-approved discount from the source quotation line: raise the cap so the
+            # same (or lower) discount doesn't re-trigger approval.
+            approved = _approved_quotation_line_discount(row)
+            if approved is not None and approved > (cap or 0):
+                cap = approved
+            if cap is not None and line_disc > flt(cap) + 0.01:
                 over.append(row.item_code)
         return over
     except Exception:
