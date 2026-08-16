@@ -8,7 +8,6 @@ frappe.ui.form.on('Sales Order', {
     refresh(frm) {
         _bound_delivery_dates(frm);
         _toggle_3pl_note(frm);
-        _deviation_ui(frm);
         _connections_prefill(frm);
         _cust_picker(frm);
 
@@ -365,36 +364,6 @@ function _client_validate_dates(frm) {
         if (row.delivery_date && row.delivery_date < today) {
             frappe.throw(__('Row #{0}: Required Delivery Date cannot be back-dated (FR-SO-16).', [row.idx]));
         }
-    });
-}
-
-// CR-10 — surface deviation status and give the Sales Head an inline decision.
-function _deviation_ui(frm) {
-    if (!frm.doc.custom_rc_deviation) return;
-
-    const status = frm.doc.custom_deviation_approval_status;
-    const colour = status === 'Approved' ? 'green' : (status === 'Rejected' ? 'red' : 'orange');
-    frm.dashboard.set_headline_alert(
-        __('RC Conditional Deviation — discount applied on a Rate Contract customer. Status: {0}', [status]),
-        colour
-    );
-
-    const is_sales_head = (frappe.user_roles || []).some(r => ['Sales Head', 'System Manager'].includes(r));
-    if (is_sales_head && status === 'Pending Sales Head Approval') {
-        frm.add_custom_button(__('Approve Deviation'), () => _decide(frm, 'Approved'), __('Deviation'));
-        frm.add_custom_button(__('Reject Deviation'), () => _decide(frm, 'Rejected'), __('Deviation'));
-    }
-}
-
-function _decide(frm, decision) {
-    frappe.call({
-        method: 'klemco_cs.events.sales_order.set_deviation_decision',
-        args: { sales_order: frm.doc.name, decision: decision },
-        freeze: true,
-        callback: () => {
-            frappe.show_alert({ message: __('Deviation {0}', [decision]), indicator: 'blue' });
-            frm.reload_doc();
-        },
     });
 }
 

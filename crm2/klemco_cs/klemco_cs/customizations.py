@@ -616,6 +616,14 @@ CUSTOM_FIELDS["Company"] = CUSTOM_FIELDS.get("Company", []) + [
 # is not supported declaratively, so client scripts handle the picker bound; here we only relabel
 # the Delivery Note default print format to the consolidated "Delivery Challan".
 PROPERTY_SETTERS = [
+    # Retired RC "Deviation" gate — hide its now-unused fields (the single Discount-Approval gate
+    # covers RC customers). Fields kept in schema for existing records' audit trail.
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "custom_rc_deviation",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "custom_deviation_approval_status",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "custom_deviation_approved_by",
+     "property": "hidden", "value": "1", "property_type": "Check"},
     {
         "doctype_or_field": "DocType",
         "doctype": "Delivery Note",

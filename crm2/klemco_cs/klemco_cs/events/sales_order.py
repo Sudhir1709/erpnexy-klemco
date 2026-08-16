@@ -32,19 +32,13 @@ def before_validate(doc, method=None):
 def validate(doc, method=None):
     _validate_delivery_dates(doc)
     _validate_3pl(doc)
-    _flag_rc_deviation(doc)
     _flag_discount_approval(doc)
     _check_credit_hold(doc)
 
 
 def before_submit(doc, method=None):
-    # BR-SO-01: an RC discount deviation cannot be submitted until the Sales Head approves.
-    if doc.get("custom_rc_deviation") and doc.get("custom_deviation_approval_status") != "Approved":
-        frappe.throw(_(
-            "This order applies a discount on a Rate Contract customer and is flagged as a "
-            "Conditional Deviation. It needs Sales Head approval before submission (BR-SO-01 / FR-SO-06)."
-        ))
     # BR-OE-01: an over-cap discount must be Approved (by Sales Head / Sales Manager) before submit.
+    # (RC customers are covered by this single gate — the separate RC "Deviation" gate was retired.)
     status = doc.get("cs_discount_approval_status")
     if status == "Discount Approval — Sales Head":
         frappe.throw(_(

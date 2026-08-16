@@ -216,18 +216,9 @@ def _alert_approvers(doc, kind):
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Klemco approval bell-notification failed")
 
-    # 3) To-do assignment (notify=0 — we send our own email above)
-    try:
-        from frappe.desk.form.assign_to import add as _assign_add
-        _assign_add({
-            "assign_to": users,
-            "doctype": "Sales Order",
-            "name": doc.name,
-            "description": subject,
-            "notify": 0,
-        })
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Klemco approval assignment failed")
+    # Notify-only: no to-do assignment. Approvers get the email + bell above and find the order in
+    # the "Pending Discount Approvals" / "Orders on Credit Hold" worklists — so we don't auto-assign a
+    # ToDo to every approver-role holder (which spammed all admins and popped the "already in ToDo" dialog).
 
 
 def notify_approval_transitions(doc, method=None):
@@ -238,11 +229,6 @@ def notify_approval_transitions(doc, method=None):
         new_d = doc.get("cs_discount_approval_status")
         old_d = prev.get("cs_discount_approval_status") if prev else None
         if new_d == _DISCOUNT_PENDING and old_d != _DISCOUNT_PENDING:
-            _alert_approvers(doc, "discount")
-        # RC-deviation gate (a discount deviation on a Rate-Contract customer)
-        new_rc = doc.get("custom_deviation_approval_status")
-        old_rc = prev.get("custom_deviation_approval_status") if prev else None
-        if new_rc == _RC_DEVIATION_PENDING and old_rc != _RC_DEVIATION_PENDING:
             _alert_approvers(doc, "discount")
         # Credit hold
         new_c = doc.get("cs_credit_hold_status")
