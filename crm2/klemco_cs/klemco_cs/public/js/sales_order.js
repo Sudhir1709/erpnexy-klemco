@@ -46,6 +46,8 @@ frappe.ui.form.on('Sales Order', {
             frm.dashboard.add_comment(
                 __('This order has been billed — item lines are locked.'), 'blue', true);
         }
+
+        _colour_processed_rows(frm);
     },
 
     onload(frm) {
@@ -388,4 +390,36 @@ function _cust_picker(frm) {
         (window.klemcoIsSalesTeam && window.klemcoIsSalesTeam())
             ? { query: 'klemco_cs.queries.customer_state_query' }
             : {});
+}
+
+// Colour item rows by fulfilment so "done" lines are visually frozen: fully delivered AND fully
+// billed → grey (frozen); partly delivered or billed → amber (in progress). ERPNext already blocks
+// reducing a billed line; this is the visual cue. Re-applied on every form refresh.
+function _colour_processed_rows(frm) {
+    const grid = frm.fields_dict.items && frm.fields_dict.items.grid;
+    if (!grid || frm.is_new()) return;
+    let any_frozen = false;
+    const paint = () => {
+        (frm.doc.items || []).forEach((row) => {
+            const gr = grid.grid_rows_by_docname && grid.grid_rows_by_docname[row.name];
+            if (!gr || !gr.row) return;
+            const qty = flt(row.qty), del = flt(row.delivered_qty);
+            const amt = flt(row.amount), bill = flt(row.billed_amt);
+            const frozen = qty > 0 && del >= qty && amt > 0 && bill >= amt;
+            const partial = !frozen && (del > 0 || bill > 0);
+            if (frozen) any_frozen = true;
+            gr.row.css('background-color', frozen ? '#EAECEE' : (partial ? '#FEF9E7' : ''));
+            const tip = frozen ? __('Delivered & invoiced — line frozen')
+                : (partial ? __('Partially delivered / invoiced') : '');
+            if (tip) { gr.row.attr('title', tip); } else { gr.row.removeAttr('title'); }
+        });
+    };
+    paint();
+    setTimeout(paint, 300);   // re-apply after the grid finishes rendering
+    if (any_frozen && !frm._cs_freeze_legend) {
+        frm._cs_freeze_legend = true;
+        frm.dashboard.add_comment(
+            __('Grey rows are delivered &amp; invoiced (frozen); amber rows are partially processed.'),
+            'blue', true);
+    }
 }
