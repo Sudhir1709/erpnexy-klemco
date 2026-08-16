@@ -68,6 +68,14 @@ CUSTOM_FIELDS = {
             "insert_after": "mobile_no",
             "description": "The sales office this user belongs to (captured at user creation).",
         },
+        {
+            "fieldname": "cs_office_address",
+            "label": "Sales Office Address",
+            "fieldtype": "Link",
+            "options": "Address",
+            "insert_after": "cs_sales_office",
+            "description": "Klemco office address printed as the seller address on this user's quotations.",
+        },
     ],
 
     # ── Sales Person: sales geography Zone ──
@@ -1879,6 +1887,8 @@ KLEMCO_TAX_INVOICE_HTML = """
 # Conditions (doc.terms), and a signature footer.
 KLEMCO_QUOTATION_HTML = """
 {%- set _company = frappe.get_doc("Company", doc.company) %}
+{%- set _oa = frappe.db.get_value("User", doc.owner, "cs_office_address") %}
+{%- set _oaddr = frappe.get_doc("Address", _oa) if _oa else None %}
 <div style="font-size:11px;color:#000;">
   <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
     <tr>
@@ -1899,8 +1909,14 @@ KLEMCO_QUOTATION_HTML = """
     <tr>
       <td style="width:55%;vertical-align:top;">
         <strong>{{ _company.company_name }}</strong><br>
-        {{ (doc.company_address_display or "") | safe }}
-        <br>GSTIN/UIN: {{ doc.company_gstin or "" }}
+        {%- if _oaddr %}
+          {{ _oaddr.address_line1 or "" }}{% if _oaddr.address_line2 %}, {{ _oaddr.address_line2 }}{% endif %}<br>
+          {{ _oaddr.city or "" }}{% if _oaddr.gst_state or _oaddr.state %} , {{ _oaddr.gst_state or _oaddr.state }}{% endif %} {{ _oaddr.pincode or "" }}
+          <br>GSTIN/UIN: {{ _oaddr.gstin or doc.company_gstin or "" }}
+        {%- else %}
+          {{ (doc.company_address_display or "") | safe }}
+          <br>GSTIN/UIN: {{ doc.company_gstin or "" }}
+        {%- endif %}
         <br>UDYAM: UDYAM-PB-01-0113236 &nbsp; CIN: U46620PB2025PTC064410
       </td>
       <td style="width:45%;vertical-align:top;">
