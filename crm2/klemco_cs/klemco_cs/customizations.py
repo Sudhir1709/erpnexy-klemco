@@ -1310,6 +1310,7 @@ SIDEBAR_STRUCTURE = [
     _l("Status Invoices", "Report", "Sales Invoices — Created"),
     _l("Proforma Invoice", "DocType", "Sales Order"),       # generated from an SO via the button
     _l("Quotations — Created", "Report", "Quotations — Created"),
+    _l("Sales by Sales Person", "Report", "Sales Person Contribution"),
     _sb("Stock", "stock"),
     _l("Stock List", "Report", "Stock Balance"),
     _l("Stock Check", "Report", "Item Stock and Open Orders"),
