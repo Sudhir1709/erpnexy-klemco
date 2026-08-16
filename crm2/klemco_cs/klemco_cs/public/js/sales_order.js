@@ -81,55 +81,69 @@ function _pf_note(frm) {
     }
 }
 
-// Import Items from a plain CSV (Item Code + Qty, optional Rate / Warehouse / Delivery Date) — a
-// friendly alternative to the native grid Upload, which needs the exact 7-row Download template.
-// Rows are appended; Item Name / Rate fill server-side on Save (item_name is optional).
+// Import Items from a plain Excel (.xlsx) or CSV (Item Code + Qty, optional Rate / Warehouse /
+// Delivery Date) — a friendly alternative to the native grid Upload, which needs the exact 7-row
+// Download template. Rows are appended; Item Name / Rate fill server-side on Save.
 function _import_items_ui(frm) {
     frm.add_custom_button(__('Import Items'), () => {
         new frappe.ui.FileUploader({
-            as_dataurl: true,
             allow_multiple: false,
-            restrictions: { allowed_file_types: ['.csv'] },
+            restrictions: { allowed_file_types: ['.csv', '.xlsx', '.xls'] },
             on_success(file) {
-                const rows = frappe.utils.csv_to_array(frappe.utils.get_decoded_string(file.dataurl));
-                if (!rows || rows.length < 2) {
-                    frappe.throw(__('The CSV has no data rows.'));
-                }
-                const head = (rows[0] || []).map((h) => (h || '').toString().trim().toLowerCase());
-                const find = (re) => head.findIndex((h) => re.test(h));
-                const col = {
-                    item: find(/item.?code|^item$/),
-                    qty: find(/qty|quantity/),
-                    rate: find(/rate|price/),
-                    wh: find(/warehouse/),
-                    dd: find(/delivery.?date/),
-                };
-                if (col.item < 0) {
-                    frappe.throw(__("The CSV needs an 'Item Code' column (plus Qty; Rate / Warehouse / Delivery Date optional)."));
-                }
-                let added = 0, skipped = 0;
-                for (let i = 1; i < rows.length; i++) {
-                    const r = rows[i] || [];
-                    const code = (r[col.item] || '').toString().trim();
-                    if (!code) { if (r.join('').trim()) skipped++; continue; }
-                    const c = frm.add_child('items');
-                    c.item_code = code;
-                    c.qty = flt(col.qty >= 0 ? r[col.qty] : 0) || 1;
-                    if (col.rate >= 0 && r[col.rate]) c.rate = flt(r[col.rate]);
-                    if (col.wh >= 0 && (r[col.wh] || '').toString().trim()) c.warehouse = r[col.wh].toString().trim();
-                    if (col.dd >= 0 && (r[col.dd] || '').toString().trim()) c.delivery_date = r[col.dd].toString().trim();
-                    added++;
-                }
-                frm.refresh_field('items');
-                frm.dirty();
-                frappe.show_alert({
-                    message: __('Imported {0} item(s){1}. Save to fetch names/rates.',
-                        [added, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : '']),
-                    indicator: added ? 'green' : 'orange',
-                }, 7);
+                frappe.call({
+                    method: 'klemco_cs.item_import.parse_items_file',
+                    args: { file_url: file.file_url },
+                    freeze: true,
+                    freeze_message: __('Reading the file…'),
+                    callback(r) { _apply_item_rows(frm, r.message || []); },
+                });
             },
         });
     }, __('Get Items From'));
+}
+
+// Map header columns (Item Code / Qty / Rate / Warehouse / Delivery Date) and append a row per line.
+function _apply_item_rows(frm, rows) {
+    if (!rows || rows.length < 2) {
+        frappe.throw(__('The file has no data rows (need a header row + at least one item).'));
+    }
+    const head = (rows[0] || []).map((h) => (h == null ? '' : h).toString().trim().toLowerCase());
+    const find = (re) => head.findIndex((h) => re.test(h));
+    const col = {
+        item: find(/item.?code|^item$/),
+        qty: find(/qty|quantity/),
+        rate: find(/rate|price/),
+        wh: find(/warehouse/),
+        dd: find(/delivery.?date/),
+    };
+    if (col.item < 0) {
+        frappe.throw(__("The file needs an 'Item Code' column (plus Qty; Rate / Warehouse / Delivery Date optional)."));
+    }
+    const cell = (r, i) => (i >= 0 && r[i] != null ? r[i].toString().trim() : '');
+    let added = 0, skipped = 0;
+    for (let i = 1; i < rows.length; i++) {
+        const r = rows[i] || [];
+        const code = cell(r, col.item);
+        if (!code) { if (r.join('').trim()) skipped++; continue; }
+        const c = frm.add_child('items');
+        c.item_code = code;
+        c.qty = flt(cell(r, col.qty)) || 1;
+        if (cell(r, col.rate)) c.rate = flt(cell(r, col.rate));
+        if (cell(r, col.wh)) c.warehouse = cell(r, col.wh);
+        if (cell(r, col.dd)) {
+            let dd = cell(r, col.dd);
+            if (dd.length > 10 && dd[10] === 'T') dd = dd.slice(0, 10);   // trim ISO datetime from Excel
+            c.delivery_date = dd;
+        }
+        added++;
+    }
+    frm.refresh_field('items');
+    frm.dirty();
+    frappe.show_alert({
+        message: __('Imported {0} item(s){1}. Save to fetch names/rates.',
+            [added, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : '']),
+        indicator: added ? 'green' : 'orange',
+    }, 7);
 }
 
 // Mandate Documents — "Upload Documents" button: pick a Type once, then select several files at
