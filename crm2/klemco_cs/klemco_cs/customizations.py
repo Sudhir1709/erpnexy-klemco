@@ -70,6 +70,34 @@ CUSTOM_FIELDS = {
         },
     ],
 
+    # ── Sales Person: sales geography Zone ──
+    "Sales Person": [
+        {
+            "fieldname": "zone",
+            "label": "Zone",
+            "fieldtype": "Select",
+            "options": "\nNorth\nSouth\nEast\nWest",
+            "insert_after": "commission_rate",
+            "translatable": 0,
+            "in_standard_filter": 1,
+            "description": "Sales zone this person covers.",
+        },
+    ],
+
+    # ── Address: Zone (auto-derived from the State; editable). One field covers bill-to & ship-to. ──
+    "Address": [
+        {
+            "fieldname": "zone",
+            "label": "Zone",
+            "fieldtype": "Select",
+            "options": "\nNorth\nSouth\nEast\nWest",
+            "insert_after": "gst_state",
+            "translatable": 0,
+            "in_standard_filter": 1,
+            "description": "Auto-set from the State on save; editable.",
+        },
+    ],
+
     # ── Sales Order: 3PL Others (CR-14), delivery instructions (CR-16), RC deviation (CR-10) ──
     "Sales Order": [
         {
@@ -957,6 +985,7 @@ def apply_customizations():
     _ensure_worklist_reports()
     _ensure_cs_sidebar()
     create_custom_fields(CUSTOM_FIELDS, update=True)
+    _ensure_address_zones()
     _ensure_company_print_details()
     # Print formats first — a `default_print_format` property setter is skipped if its format
     # doesn't exist yet (see _apply_property_setters), so create them before applying setters.
@@ -971,6 +1000,22 @@ def apply_customizations():
     _ensure_quotation_override()
     _ensure_plant_order_labels()
     frappe.clear_cache()
+
+
+def _ensure_address_zones():
+    """Backfill the Zone on any Address that has a State but no Zone (idempotent — never overwrites
+    a manual value). Uses the same state->zone map as the Address auto-fill event."""
+    from klemco_cs.events.address import zone_for
+    meta = frappe.get_meta("Address")
+    state_fields = [f for f in ("gst_state", "state") if meta.has_field(f)]
+    if not state_fields:  # e.g. a site without India Compliance
+        return
+    for a in frappe.get_all("Address",
+                            filters={"zone": ["in", [None, ""]]},
+                            fields=["name"] + state_fields):
+        z = zone_for(a.get("gst_state") or a.get("state"))
+        if z:
+            frappe.db.set_value("Address", a.name, "zone", z, update_modified=False)
 
 
 def _ensure_tax_simplification():

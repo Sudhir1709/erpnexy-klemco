@@ -57,6 +57,7 @@ doctype_js = {
     'KM Order': 'public/js/km_order.js',
     'Payment Terms Template': 'public/js/payment_terms_template.js',
     'Sales Enquiry': 'public/js/sales_enquiry.js',
+    'Address': 'public/js/address.js',
 }
 
 # Server-side validation / automation for the v1.3 feedback items.
@@ -89,6 +90,9 @@ doc_events = {
     },
     'Sales Enquiry': {
         'after_insert': 'klemco_cs.notifications.enquiry_registered',
+    },
+    'Address': {
+        'validate': 'klemco_cs.events.address.validate',
     },
     'Item': {
         'validate': 'klemco_cs.events.item.validate',
