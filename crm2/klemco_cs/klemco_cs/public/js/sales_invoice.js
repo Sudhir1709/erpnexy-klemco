@@ -1,9 +1,17 @@
 // Sales Invoice — Klemco CS client script (BRD v1.3)
 //   CR-13 / FR-DP-11  COD cheque capture is shown only for COD customers, after the invoice exists.
 
+// Dispatch-documents checklist (goods invoices) — must match events/sales_invoice.py DISPATCH_CHECKLIST.
+const DISPATCH_CHECKLIST = [
+    ['Photos of boxes', 1], ['MTC for all parts', 1], ['Raw material MTC of all', 1],
+    ['Traceability report', 1], ['E-way bill Part A', 1], ['Packaging List', 1],
+    ['LR copy', 1], ['Weight Receipt', 1], ['Vehicle photo at dispatch', 0],
+];
+
 frappe.ui.form.on('Sales Invoice', {
     refresh(frm) {
         _cust_picker(frm);
+        _seed_dispatch_ui(frm);
         if (frm.doc.custom_is_cod && frm.doc.docstatus === 0) {
             frm.set_intro(
                 __('COD customer — capture cheque details (No., Bank, Date, Amount) before submitting (FR-DP-11 / BR-DP-06).'),
@@ -16,7 +24,7 @@ frappe.ui.form.on('Sales Invoice', {
         if (!frm.is_new()) {
             frm.add_custom_button(__('Proforma Invoice'), () => _open_proforma(frm, 'Proforma Invoice (Sales Invoice)'));
         }
-        // Dispatch-documents checklist reminder (goods invoices; rows are seeded on save).
+        // Dispatch-documents checklist reminder (goods invoices; rows seeded live once goods are added).
         if (frm.doc.docstatus === 0 && (frm.doc.cs_dispatch_documents || []).length
             && frm.doc.cs_dispatch_docs_status === 'Incomplete') {
             frm.dashboard.set_headline_alert(
@@ -74,6 +82,28 @@ frappe.ui.form.on('CS Dispatch Document', {
         }
     },
 });
+
+// Seed the dispatch checklist live once the invoice has goods (a stock item) — before Save.
+frappe.ui.form.on('Sales Invoice Item', {
+    item_code(frm) { _seed_dispatch_ui(frm); },
+});
+
+function _seed_dispatch_ui(frm) {
+    if (frm.doc.docstatus !== 0 || frm.doc.is_return || frm.doc.is_pos) return;
+    if ((frm.doc.cs_dispatch_documents || []).length) return;   // already seeded — never duplicate
+    const codes = [...new Set((frm.doc.items || []).map((i) => i.item_code).filter(Boolean))];
+    if (!codes.length) return;
+    frappe.db.get_list('Item', {
+        filters: { name: ['in', codes], is_stock_item: 1 }, fields: ['name'], limit: 1,
+    }).then((rows) => {
+        if (!rows || !rows.length) return;                        // service-only invoice → no checklist
+        if ((frm.doc.cs_dispatch_documents || []).length) return; // race guard
+        DISPATCH_CHECKLIST.forEach(([document_name, mandatory]) => {
+            frm.add_child('cs_dispatch_documents', { document_name, mandatory, is_provided: 0 });
+        });
+        frm.refresh_field('cs_dispatch_documents');
+    });
+}
 
 // Create a new Shipping address for the customer (quick-entry) and set it on this invoice.
 // Open the print view of this document with the given (Proforma) print format preselected.
