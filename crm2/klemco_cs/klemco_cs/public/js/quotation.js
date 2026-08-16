@@ -12,6 +12,7 @@ frappe.ui.form.on('Quotation', {
         }
         _sitc_ui(frm);
         _discount_ui(frm);
+        _cust_picker(frm);
         if (!frm.is_new() && frm.doc.cs_add_tds) {
             frm.add_custom_button(__('Download TDS Pack'), () => {
                 window.open('/api/method/klemco_cs.tds.download_tds_pack?quotation='
@@ -22,9 +23,19 @@ frappe.ui.form.on('Quotation', {
     cs_project_type(frm) {
         _sitc_ui(frm);
     },
+    quotation_to(frm) { _cust_picker(frm); },
     cs_add_pf(frm) { _pf_note(frm); },
     cs_pf_rate(frm) { _pf_note(frm); },
 });
+
+// Sales-team users pick the customer from a "Name + State"-only list (party_name is a Dynamic Link;
+// only override when quoting to a Customer, so Lead/Prospect quotes still search their own doctype).
+function _cust_picker(frm) {
+    frm.set_query('party_name', () =>
+        (window.klemcoIsSalesTeam && window.klemcoIsSalesTeam() && frm.doc.quotation_to === 'Customer')
+            ? { query: 'klemco_cs.queries.customer_state_query' }
+            : {});
+}
 
 // Discount over the matrix cap → Sales-Head approval banner + Approve/Reject actions.
 function _discount_ui(frm) {

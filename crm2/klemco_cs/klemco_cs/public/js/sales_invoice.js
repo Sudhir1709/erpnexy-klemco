@@ -3,6 +3,7 @@
 
 frappe.ui.form.on('Sales Invoice', {
     refresh(frm) {
+        _cust_picker(frm);
         if (frm.doc.custom_is_cod && frm.doc.docstatus === 0) {
             frm.set_intro(
                 __('COD customer — capture cheque details (No., Bank, Date, Amount) before submitting (FR-DP-11 / BR-DP-06).'),
@@ -99,4 +100,12 @@ function _new_delivery_address(frm) {
             links: [{link_doctype: 'Customer', link_name: frm.doc.customer}],
         }
     );
+}
+
+// Sales-team users pick the customer from a "Name + State"-only list (klemcoIsSalesTeam from the bundle).
+function _cust_picker(frm) {
+    frm.set_query('customer', () =>
+        (window.klemcoIsSalesTeam && window.klemcoIsSalesTeam())
+            ? { query: 'klemco_cs.queries.customer_state_query' }
+            : {});
 }

@@ -10,6 +10,7 @@ frappe.ui.form.on('Sales Order', {
         _toggle_3pl_note(frm);
         _deviation_ui(frm);
         _connections_prefill(frm);
+        _cust_picker(frm);
 
         // CR-11: raise a KM Order after reviewing this SO (submitted orders only).
         if (frm.doc.docstatus === 1) {
@@ -379,4 +380,12 @@ function _decide(frm, decision) {
             frm.reload_doc();
         },
     });
+}
+
+// Sales-team users pick the customer from a "Name + State"-only list (klemcoIsSalesTeam from the bundle).
+function _cust_picker(frm) {
+    frm.set_query('customer', () =>
+        (window.klemcoIsSalesTeam && window.klemcoIsSalesTeam())
+            ? { query: 'klemco_cs.queries.customer_state_query' }
+            : {});
 }

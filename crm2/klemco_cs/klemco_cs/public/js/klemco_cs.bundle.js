@@ -19,6 +19,13 @@
     (document.head || document.documentElement).appendChild(s);
   })();
 
+  // Sales-team users see only Customer Name + State (restricted customer picker + Address view).
+  // Sales User / Sales Manager, but NOT admins (System Manager). Missing bundle => no restriction.
+  window.klemcoIsSalesTeam = function () {
+    const r = (window.frappe && frappe.user_roles) || [];
+    return (r.includes("Sales User") || r.includes("Sales Manager")) && !r.includes("System Manager");
+  };
+
   if (window.__klemcoAIWidget) return;
   window.__klemcoAIWidget = true;
 

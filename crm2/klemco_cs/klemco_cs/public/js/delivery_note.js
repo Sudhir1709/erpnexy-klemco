@@ -4,6 +4,7 @@
 
 frappe.ui.form.on('Delivery Note', {
     refresh(frm) {
+        _cust_picker(frm);
         if (frm.doc.customer) {
             frm.add_custom_button(__('New Delivery Address'), () => _new_delivery_address(frm), __('Create'));
         }
@@ -66,4 +67,12 @@ function _render_test_certificates(frm) {
             frm.dashboard.add_section(html, __('Test Certificates'));
         },
     });
+}
+
+// Sales-team users pick the customer from a "Name + State"-only list (klemcoIsSalesTeam from the bundle).
+function _cust_picker(frm) {
+    frm.set_query('customer', () =>
+        (window.klemcoIsSalesTeam && window.klemcoIsSalesTeam())
+            ? { query: 'klemco_cs.queries.customer_state_query' }
+            : {});
 }
