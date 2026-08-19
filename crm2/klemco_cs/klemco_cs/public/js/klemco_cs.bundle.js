@@ -75,6 +75,78 @@
     });
   })();
 
+  // ── "Document Flow" button — SAP-style tree of the whole linked transaction chain ──
+  function klemcoShowDocumentFlow(frm) {
+    frappe.call({
+      method: "klemco_cs.document_flow.get_document_flow",
+      args: { doctype: frm.doctype, name: frm.doc.name },
+      freeze: true,
+      callback(r) {
+        const data = r.message || {};
+        const nodes = data.nodes || {};
+        const keys = Object.keys(nodes);
+        if (!keys.length) { frappe.msgprint(__("No linked documents found in the flow.")); return; }
+        const edges = data.edges || [];
+        const esc = frappe.utils.escape_html;
+        const children = {}, hasParent = {};
+        edges.forEach(([p, c]) => { (children[p] = children[p] || []).push(c); hasParent[c] = true; });
+        Object.keys(children).forEach((k) =>
+          children[k].sort((a, b) => (nodes[a].rank - nodes[b].rank)));
+        const roots = keys.filter((k) => !hasParent[k]).sort((a, b) => nodes[a].rank - nodes[b].rank);
+        const pill = (n) => {
+          const c = n.docstatus === 2 ? "#C0392B" : (n.docstatus === 1 ? "#1E8449" : "#7D6608");
+          const bg = n.docstatus === 2 ? "#FDEDEC" : (n.docstatus === 1 ? "#E9F7EF" : "#FEF9E7");
+          return `<span style="font-size:11px;padding:1px 8px;border-radius:8px;background:${bg};color:${c};white-space:nowrap;">${esc(n.status || "")}</span>`;
+        };
+        const visited = {}, rows = [];
+        const render = (k, depth) => {
+          if (visited[k]) return;
+          visited[k] = true;
+          const n = nodes[k];
+          const anchor = k === data.anchor;
+          rows.push(`<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;padding-left:${8 + depth * 22}px;border-bottom:1px solid #f0f0f0;${anchor ? "background:#eaf2fb;" : ""}">
+            <div style="flex:1;min-width:0;">
+              <span style="color:#999;font-size:11px;">${depth ? "└ " : ""}${esc(n.label)}</span>
+              <a class="kflow-link" href="#" data-dt="${esc(n.doctype)}" data-nm="${esc(n.name)}" style="margin-left:4px;${anchor ? "font-weight:700;" : ""}">${esc(n.name)}</a>
+            </div>
+            <span style="min-width:150px;">${pill(n)}</span>
+            <span style="font-size:12px;color:#666;white-space:nowrap;min-width:90px;text-align:right;">${esc(n.date || "")}</span>
+            <span style="font-size:12px;color:#666;white-space:nowrap;min-width:110px;text-align:right;">${esc(n.amount || "")}</span>
+          </div>`);
+          (children[k] || []).forEach((c) => render(c, depth + 1));
+        };
+        roots.forEach((k) => render(k, 0));
+        keys.forEach((k) => { if (!visited[k]) render(k, 0); });   // cycle safety
+        const html = `<div style="max-height:65vh;overflow:auto;font-size:13px;">
+          <div style="display:flex;gap:10px;padding:4px 8px;color:#999;font-size:11px;border-bottom:1px solid #ddd;">
+            <div style="flex:1;">Document</div><div style="min-width:150px;">Status</div>
+            <div style="min-width:90px;text-align:right;">Date</div><div style="min-width:110px;text-align:right;">Amount</div>
+          </div>${rows.join("")}</div>`;
+        const d = new frappe.ui.Dialog({ title: __("Document Flow — {0}", [frm.doc.name]), size: "large" });
+        d.$body.html(html);
+        d.$body.on("click", ".kflow-link", function (e) {
+          e.preventDefault();
+          d.hide();
+          frappe.set_route("Form", $(this).data("dt"), String($(this).data("nm")));
+        });
+        d.show();
+      },
+    });
+  }
+
+  (function klemcoFlowButton() {
+    if (!(window.frappe && frappe.ui && frappe.ui.form)) return;
+    ["Sales Enquiry", "Quotation", "Sales Order", "Delivery Note", "Sales Invoice",
+     "Payment Entry", "KM Order", "Purchase Invoice"].forEach((dt) => {
+      frappe.ui.form.on(dt, {
+        refresh(frm) {
+          if (frm.is_new()) return;
+          frm.add_custom_button(__("Document Flow"), () => klemcoShowDocumentFlow(frm));
+        },
+      });
+    });
+  })();
+
   const API = "/api/method/klemco_cs.ai_assistant.api.";
   const history = [];
 

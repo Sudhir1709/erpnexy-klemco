@@ -78,6 +78,20 @@ CUSTOM_FIELDS = {
         },
     ],
 
+    # ── Purchase Invoice: durable link back to the Plant Order that generated it (Document Flow) ──
+    "Purchase Invoice": [
+        {
+            "fieldname": "cs_plant_order",
+            "label": "Plant Order",
+            "fieldtype": "Link",
+            "options": "KM Order",
+            "insert_after": "remarks",
+            "read_only": 1,
+            "print_hide": 1,
+            "description": "The Plant Order this purchase bill was generated from.",
+        },
+    ],
+
     # ── Sales Person: sales geography Zone ──
     "Sales Person": [
         {

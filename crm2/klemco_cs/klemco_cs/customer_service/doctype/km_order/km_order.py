@@ -139,6 +139,8 @@ def make_purchase_bill(source_name, target_doc=None):
     pi.company = KM_COMPANY
     pi.update_stock = 1  # bill = receipt: goods enter Finished Goods on submit
     pi.set_warehouse = KM_RECEIVE_WAREHOUSE
+    if pi.meta.has_field("cs_plant_order"):
+        pi.cs_plant_order = doc.name  # durable link for the Document Flow tree
     pi.remarks = _("Auto-generated from Plant Order {0} — receives goods into {1} at purchase rate.").format(
         doc.name, KM_RECEIVE_WAREHOUSE)
 
