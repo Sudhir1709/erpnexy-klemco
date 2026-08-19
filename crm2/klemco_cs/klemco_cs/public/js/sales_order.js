@@ -101,39 +101,52 @@ function _import_items_ui(frm) {
     }, __('Get Items From'));
 }
 
+// Normalise a spreadsheet date cell to YYYY-MM-DD: ISO datetime (real Excel date) → date part;
+// dd.mm.yyyy / dd-mm-yyyy / dd/mm/yyyy (day-first) → yyyy-mm-dd; yyyy-mm-dd passes through.
+function _norm_date(v) {
+    if (!v) return '';
+    v = v.toString().trim();
+    if (v.length >= 10 && v[10] === 'T') return v.slice(0, 10);
+    let m = v.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return v;   // yyyy-mm-dd or anything else — let ERPNext validate
+}
+
 // Map header columns (Item Code / Qty / Rate / Warehouse / Delivery Date) and append a row per line.
+// The header can be on any row (blank rows above it are tolerated); data starts on the next row.
 function _apply_item_rows(frm, rows) {
-    if (!rows || rows.length < 2) {
-        frappe.throw(__('The file has no data rows (need a header row + at least one item).'));
+    rows = rows || [];
+    let hIdx = -1, col = null;
+    for (let i = 0; i < rows.length; i++) {
+        const head = (rows[i] || []).map((h) => (h == null ? '' : h).toString().trim().toLowerCase());
+        const find = (re) => head.findIndex((h) => re.test(h));
+        const item = find(/item.?code|^item$/);
+        if (item >= 0) {
+            hIdx = i;
+            col = { item, qty: find(/qty|quantity/), rate: find(/rate|price/),
+                    wh: find(/warehouse/), dd: find(/delivery.?date/) };
+            break;
+        }
     }
-    const head = (rows[0] || []).map((h) => (h == null ? '' : h).toString().trim().toLowerCase());
-    const find = (re) => head.findIndex((h) => re.test(h));
-    const col = {
-        item: find(/item.?code|^item$/),
-        qty: find(/qty|quantity/),
-        rate: find(/rate|price/),
-        wh: find(/warehouse/),
-        dd: find(/delivery.?date/),
-    };
-    if (col.item < 0) {
+    if (hIdx < 0) {
         frappe.throw(__("The file needs an 'Item Code' column (plus Qty; Rate / Warehouse / Delivery Date optional)."));
     }
     const cell = (r, i) => (i >= 0 && r[i] != null ? r[i].toString().trim() : '');
     let added = 0, skipped = 0;
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = hIdx + 1; i < rows.length; i++) {
         const r = rows[i] || [];
         const code = cell(r, col.item);
-        if (!code) { if (r.join('').trim()) skipped++; continue; }
+        if (!code) {
+            if (r.some((v) => v != null && v.toString().trim())) skipped++;   // non-empty row, no item code
+            continue;
+        }
         const c = frm.add_child('items');
         c.item_code = code;
         c.qty = flt(cell(r, col.qty)) || 1;
         if (cell(r, col.rate)) c.rate = flt(cell(r, col.rate));
         if (cell(r, col.wh)) c.warehouse = cell(r, col.wh);
-        if (cell(r, col.dd)) {
-            let dd = cell(r, col.dd);
-            if (dd.length > 10 && dd[10] === 'T') dd = dd.slice(0, 10);   // trim ISO datetime from Excel
-            c.delivery_date = dd;
-        }
+        const dd = _norm_date(cell(r, col.dd));
+        if (dd) c.delivery_date = dd;
         added++;
     }
     frm.refresh_field('items');
