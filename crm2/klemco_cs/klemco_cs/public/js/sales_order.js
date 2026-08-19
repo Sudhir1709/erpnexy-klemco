@@ -388,34 +388,48 @@ function _cust_picker(frm) {
             : {});
 }
 
+// One-time stylesheet that colours the grid CELLS (the visible area) for frozen/partial rows. Cells
+// must be targeted (not the row's inner .data-row) with !important, else they cover the colour.
+function _inject_freeze_css() {
+    if (document.getElementById('klemco-freeze-css')) return;
+    const s = document.createElement('style');
+    s.id = 'klemco-freeze-css';
+    s.textContent = `
+      .grid-row.klemco-frozen  .grid-static-col { background-color:#dfe3e6 !important; color:#6c757d !important; }
+      .grid-row.klemco-frozen  .grid-static-col a { color:#6c757d !important; }
+      .grid-row.klemco-partial .grid-static-col { background-color:#fde7c9 !important; }`;
+    (document.head || document.documentElement).appendChild(s);
+}
+
 // Colour item rows by fulfilment so "done" lines are visually frozen: fully delivered AND fully
 // billed → grey (frozen); partly delivered or billed → amber (in progress). ERPNext already blocks
-// reducing a billed line; this is the visual cue. Re-applied on every form refresh.
+// reducing a billed line; this is the visual cue. Colours the row wrapper via a CSS class.
 function _colour_processed_rows(frm) {
+    _inject_freeze_css();
     const grid = frm.fields_dict.items && frm.fields_dict.items.grid;
     if (!grid || frm.is_new()) return;
-    let any_frozen = false;
     const paint = () => {
-        (frm.doc.items || []).forEach((row) => {
-            const gr = grid.grid_rows_by_docname && grid.grid_rows_by_docname[row.name];
-            if (!gr || !gr.row) return;
-            const qty = flt(row.qty), del = flt(row.delivered_qty);
-            const amt = flt(row.amount), bill = flt(row.billed_amt);
+        let any_frozen = false;
+        (grid.grid_rows || []).forEach((gr) => {
+            const d = gr && gr.doc;
+            if (!d || !gr.wrapper) return;
+            const qty = flt(d.qty), del = flt(d.delivered_qty);
+            const amt = flt(d.amount), bill = flt(d.billed_amt);
             const frozen = qty > 0 && del >= qty && amt > 0 && bill >= amt;
             const partial = !frozen && (del > 0 || bill > 0);
             if (frozen) any_frozen = true;
-            gr.row.css('background-color', frozen ? '#EAECEE' : (partial ? '#FEF9E7' : ''));
+            gr.wrapper.toggleClass('klemco-frozen', frozen).toggleClass('klemco-partial', partial);
             const tip = frozen ? __('Delivered & invoiced — line frozen')
                 : (partial ? __('Partially delivered / invoiced') : '');
-            if (tip) { gr.row.attr('title', tip); } else { gr.row.removeAttr('title'); }
+            if (tip) { gr.wrapper.attr('title', tip); } else { gr.wrapper.removeAttr('title'); }
         });
+        if (any_frozen && !frm._cs_freeze_legend) {
+            frm._cs_freeze_legend = true;
+            frm.dashboard.add_comment(
+                __('Grey rows are delivered &amp; invoiced (frozen); amber rows are partially processed.'),
+                'blue', true);
+        }
     };
     paint();
-    setTimeout(paint, 300);   // re-apply after the grid finishes rendering
-    if (any_frozen && !frm._cs_freeze_legend) {
-        frm._cs_freeze_legend = true;
-        frm.dashboard.add_comment(
-            __('Grey rows are delivered &amp; invoiced (frozen); amber rows are partially processed.'),
-            'blue', true);
-    }
+    setTimeout(paint, 400);   // re-apply after the grid finishes rendering
 }
