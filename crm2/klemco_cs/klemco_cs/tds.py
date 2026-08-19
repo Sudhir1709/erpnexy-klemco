@@ -34,13 +34,10 @@ def download_tds_pack(quotation):
     std = frappe.db.get_value("Company", doc.company, "cs_standard_datasheet")
     if std:
         urls.append(std)
-    seen = set()
     for it in doc.items:
-        if not it.item_code or it.item_code in seen:
-            continue
-        seen.add(it.item_code)
-        f = frappe.db.get_value("Item", it.item_code, "cs_tds_file")
-        if f:
+        # Prefer a TDS attached to this quotation line; else fall back to the Item master's TDS.
+        f = it.get("cs_tds_file") or (it.item_code and frappe.db.get_value("Item", it.item_code, "cs_tds_file"))
+        if f and f not in urls:   # dedupe by file URL
             urls.append(f)
 
     from pypdf import PdfWriter, PdfReader

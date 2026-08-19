@@ -13,7 +13,8 @@ frappe.ui.form.on('Quotation', {
         _sitc_ui(frm);
         _discount_ui(frm);
         _cust_picker(frm);
-        if (!frm.is_new() && frm.doc.cs_add_tds) {
+        const _has_line_tds = (frm.doc.items || []).some((i) => i.cs_tds_file);
+        if (!frm.is_new() && (frm.doc.cs_add_tds || _has_line_tds)) {
             frm.add_custom_button(__('Download TDS Pack'), () => {
                 window.open('/api/method/klemco_cs.tds.download_tds_pack?quotation='
                     + encodeURIComponent(frm.doc.name), '_blank');

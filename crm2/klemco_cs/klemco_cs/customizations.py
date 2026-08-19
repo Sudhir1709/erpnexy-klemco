@@ -598,7 +598,17 @@ CUSTOM_FIELDS["Quotation Item"] = [
         "label": "Product Image",
         "fieldtype": "Attach Image",
         "insert_after": "image",
-        "description": "Optional image shown on the quotation printout when 'Show Product Image' is on.",
+        "in_list_view": 0,   # Attach Image can't be a grid column — attach via the line's detail view
+        "description": "Optional image for this line (open the line to attach) — shown on the quotation "
+                       "printout; falls back to the Item's own Image.",
+    },
+    {
+        "fieldname": "cs_tds_file",
+        "label": "TDS (this line)",
+        "fieldtype": "Attach",
+        "insert_after": "cs_product_image",
+        "description": "Optional TDS PDF for this line — used by 'Download TDS Pack' (falls back to the Item's "
+                       "TDS on the master).",
     },
 ]
 
@@ -1950,10 +1960,13 @@ KLEMCO_QUOTATION_HTML = """
     </tr>
   </table>
 
+  {#- Auto-show the Image column when it's forced on, or when any line has an image (line or item). -#}
+  {%- set _ns = namespace(show=doc.cs_show_product_image) %}
+  {%- for row in doc.items %}{% if not _ns.show and (row.cs_product_image or frappe.db.get_value("Item", row.item_code, "image")) %}{% set _ns.show = true %}{% endif %}{% endfor %}
   <table class="table table-bordered" style="font-size:11px;margin-top:0;margin-bottom:2px;">
     <thead><tr>
       <th style="width:4%;">Sl</th>
-      {%- if doc.cs_show_product_image %}<th style="width:12%;">Image</th>{% endif %}
+      {%- if _ns.show %}<th style="width:12%;">Image</th>{% endif %}
       <th>Description</th>
       <th style="width:10%;">HSN/SAC</th>
       <th class="text-right" style="width:12%;">Qty</th>
@@ -1964,7 +1977,7 @@ KLEMCO_QUOTATION_HTML = """
     {%- for row in doc.items %}
       <tr>
         <td>{{ loop.index }}</td>
-        {%- if doc.cs_show_product_image %}
+        {%- if _ns.show %}
           {%- set img = row.cs_product_image or frappe.db.get_value("Item", row.item_code, "image") %}
           <td>{% if img %}<img src="{{ img }}" style="max-width:70px;max-height:70px;">{% endif %}</td>
         {%- endif %}
