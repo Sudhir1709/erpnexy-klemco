@@ -24,6 +24,23 @@ def _file_bytes(file_url):
 
 
 @frappe.whitelist()
+def tds_available(quotation):
+    """True if there's any TDS to merge — company standard datasheet, a line's TDS, or an item's
+    master TDS — so the client can auto-show the 'Download TDS Pack' button with no checkbox."""
+    if not quotation or not frappe.has_permission("Quotation", "read", doc=quotation):
+        return False
+    doc = frappe.get_doc("Quotation", quotation)
+    if frappe.db.get_value("Company", doc.company, "cs_standard_datasheet"):
+        return True
+    for it in doc.items:
+        if it.get("cs_tds_file"):
+            return True
+        if it.item_code and frappe.db.get_value("Item", it.item_code, "cs_tds_file"):
+            return True
+    return False
+
+
+@frappe.whitelist()
 def download_tds_pack(quotation):
     """Merge the company standard datasheet + each quotation item's TDS PDF into one PDF download."""
     if not frappe.has_permission("Quotation", "read", doc=quotation):

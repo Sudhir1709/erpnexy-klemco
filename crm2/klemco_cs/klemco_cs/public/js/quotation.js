@@ -13,11 +13,20 @@ frappe.ui.form.on('Quotation', {
         _sitc_ui(frm);
         _discount_ui(frm);
         _cust_picker(frm);
-        const _has_line_tds = (frm.doc.items || []).some((i) => i.cs_tds_file);
-        if (!frm.is_new() && (frm.doc.cs_add_tds || _has_line_tds)) {
-            frm.add_custom_button(__('Download TDS Pack'), () => {
-                window.open('/api/method/klemco_cs.tds.download_tds_pack?quotation='
-                    + encodeURIComponent(frm.doc.name), '_blank');
+        // Auto-show the TDS button whenever there's a datasheet to merge (item master / line /
+        // company standard) — no "TDS for Quotation" checkbox needed.
+        if (!frm.is_new()) {
+            frappe.call({
+                method: 'klemco_cs.tds.tds_available',
+                args: { quotation: frm.doc.name },
+                callback(r) {
+                    if (r.message) {
+                        frm.add_custom_button(__('Download TDS Pack'), () => {
+                            window.open('/api/method/klemco_cs.tds.download_tds_pack?quotation='
+                                + encodeURIComponent(frm.doc.name), '_blank');
+                        });
+                    }
+                },
             });
         }
     },

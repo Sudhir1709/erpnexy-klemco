@@ -988,6 +988,13 @@ PROPERTY_SETTERS = [
      "property": "reqd", "value": "0", "property_type": "Check"},
     {"doctype_or_field": "Field", "doctype": "Quotation Item", "fieldname": "item_name",
      "property": "reqd", "value": "0", "property_type": "Check"},
+    # Product image + TDS are now fully automatic from the Item master — hide the toggles (no
+    # user intervention): the image column auto-shows when any item has an image, and the TDS
+    # button auto-appears when any item has a datasheet.
+    {"doctype_or_field": "Field", "doctype": "Quotation", "fieldname": "cs_show_product_image",
+     "property": "hidden", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Quotation", "fieldname": "cs_add_tds",
+     "property": "hidden", "value": "1", "property_type": "Check"},
     {
         "doctype_or_field": "Field",
         "doctype": "Sales Invoice Item",
