@@ -1,0 +1,861 @@
+{% raw %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Order — Field Guide</title>
+</head>
+<body>
+<style>
+  :root{
+    --bg:#F5F8FA; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#17242F; --ink-soft:#42525E; --muted:#7C8B97;
+    --line:#E3EAEF; --line-strong:#D2DCE3;
+    --accent:#1A5276; --accent-2:#2E7BB0;
+    --fill:#1B6F52; --fill-bg:#E7F3EC; --fill-line:#BFE0CE;
+    --sys:#5E6E7A; --sys-bg:#EDF1F4; --sys-line:#DCE3E9;
+    --opt:#2E7BB0; --opt-bg:#EAF2F8; --opt-line:#CBE0EF;
+    --shadow:0 1px 2px rgba(23,36,47,.04),0 6px 20px -12px rgba(23,36,47,.18);
+    --serif:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E161C; --surface:#16212A; --surface-2:#131D25;
+      --ink:#E8EFF4; --ink-soft:#AAB9C3; --muted:#7B8A95;
+      --line:#25323C; --line-strong:#31414C;
+      --accent:#74B4DD; --accent-2:#93C8EA;
+      --fill:#63C69C; --fill-bg:#152B24; --fill-line:#254a3c;
+      --sys:#9AA9B4; --sys-bg:#1D2831; --sys-line:#2A3843;
+      --opt:#8CC5E8; --opt-bg:#152531; --opt-line:#284051;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F5F8FA; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#17242F; --ink-soft:#42525E; --muted:#7C8B97;
+    --line:#E3EAEF; --line-strong:#D2DCE3;
+    --accent:#1A5276; --accent-2:#2E7BB0;
+    --fill:#1B6F52; --fill-bg:#E7F3EC; --fill-line:#BFE0CE;
+    --sys:#5E6E7A; --sys-bg:#EDF1F4; --sys-line:#DCE3E9;
+    --opt:#2E7BB0; --opt-bg:#EAF2F8; --opt-line:#CBE0EF;
+    --shadow:0 1px 2px rgba(23,36,47,.04),0 6px 20px -12px rgba(23,36,47,.18);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E161C; --surface:#16212A; --surface-2:#131D25;
+    --ink:#E8EFF4; --ink-soft:#AAB9C3; --muted:#7B8A95;
+    --line:#25323C; --line-strong:#31414C;
+    --accent:#74B4DD; --accent-2:#93C8EA;
+    --fill:#63C69C; --fill-bg:#152B24; --fill-line:#254a3c;
+    --sys:#9AA9B4; --sys-bg:#1D2831; --sys-line:#2A3843;
+    --opt:#8CC5E8; --opt-bg:#152531; --opt-line:#284051;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .wrap{max-width:850px;margin:0 auto;padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 96px;}
+
+  /* ---- Masthead ---- */
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent-2);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:10px;}
+  .kicker::before{content:"";width:26px;height:2px;background:var(--accent-2);display:inline-block;border-radius:2px;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5.5vw,46px);line-height:1.08;
+    letter-spacing:-.01em;margin:0 0 14px;text-wrap:balance;}
+  h1 .arrow{color:var(--muted);font-weight:400;}
+  .lede{font-size:clamp(16px,2.4vw,18.5px);color:var(--ink-soft);max-width:64ch;margin:0 0 26px;}
+
+  .rule{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);
+    border-left:3px solid var(--accent);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);}
+  .rule .rk{font-family:var(--serif);font-weight:700;color:var(--accent);font-size:15px;white-space:nowrap;padding-top:1px;}
+  .rule p{margin:0;font-size:14.5px;color:var(--ink-soft);}
+
+  /* ---- Legend ---- */
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:26px 0 8px;padding:0;list-style:none;}
+  .legend li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);}
+
+  .tag{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.02em;
+    padding:2.5px 9px;border-radius:999px;border:1px solid;white-space:nowrap;line-height:1.5;}
+  .tag-fill{color:var(--fill);background:var(--fill-bg);border-color:var(--fill-line);}
+  .tag-sys{color:var(--sys);background:var(--sys-bg);border-color:var(--sys-line);}
+  .tag-opt{color:var(--opt);background:var(--opt-bg);border-color:var(--opt-line);}
+
+  /* ---- Jump nav ---- */
+  nav.toc{margin:30px 0 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0;}
+  nav.toc .grp{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;}
+  nav.toc ul{list-style:none;margin:0 0 4px;padding:0;display:flex;flex-wrap:wrap;gap:7px 8px;}
+  nav.toc a{font-size:13px;color:var(--ink-soft);text-decoration:none;padding:4px 11px;border:1px solid var(--line-strong);
+    border-radius:999px;transition:background .15s,color .15s,border-color .15s;}
+  nav.toc a:hover{color:var(--accent);border-color:var(--accent);background:var(--surface);}
+  nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* ---- Part headers ---- */
+  .part{margin:48px 0 22px;display:flex;align-items:baseline;gap:14px;}
+  .part h2{font-family:var(--serif);font-size:clamp(21px,3.4vw,26px);font-weight:600;margin:0;letter-spacing:-.01em;}
+  .part .pn{font-family:var(--mono);font-size:12px;color:var(--accent-2);font-weight:600;letter-spacing:.1em;}
+  .part .pd{font-size:13.5px;color:var(--muted);margin-left:auto;text-align:right;max-width:40ch;}
+
+  /* ---- Section cards ---- */
+  .sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px clamp(16px,3vw,26px);
+    margin:14px 0;box-shadow:var(--shadow);scroll-margin-top:16px;}
+  .sec > h3{font-family:var(--serif);font-size:20px;font-weight:600;margin:0 0 3px;letter-spacing:-.005em;}
+  .sec > .purpose{margin:0 0 16px;color:var(--ink-soft);font-size:14.5px;}
+
+  .fields{display:flex;flex-direction:column;gap:0;}
+  .field{display:grid;grid-template-columns:minmax(140px,208px) 1fr;gap:6px 22px;
+    padding:13px 0;border-top:1px solid var(--line);}
+  .field:first-child{border-top:none;padding-top:2px;}
+  .fmeta{display:flex;flex-direction:column;gap:7px;align-items:flex-start;}
+  .fname{font-family:var(--serif);font-size:15.5px;font-weight:700;color:var(--ink);line-height:1.3;}
+  .fslug{font-family:var(--mono);font-size:11.5px;color:var(--muted);word-break:break-word;}
+  .fdesc{margin:0;font-size:14.5px;color:var(--ink-soft);}
+  .fdesc .ref{font-family:var(--mono);font-size:11.5px;color:var(--accent-2);background:var(--opt-bg);
+    padding:1px 6px;border-radius:5px;border:1px solid var(--opt-line);white-space:nowrap;}
+
+  /* ---- Cheat sheet ---- */
+  .cheat{margin-top:52px;}
+  .cheat > h2{font-family:var(--serif);font-size:clamp(21px,3.4vw,26px);font-weight:600;margin:0 0 4px;}
+  .cheat > p{margin:0 0 18px;color:var(--ink-soft);font-size:14.5px;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .col{border-radius:14px;padding:20px clamp(15px,2.5vw,22px);border:1px solid;}
+  .col.do{background:var(--fill-bg);border-color:var(--fill-line);}
+  .col.dont{background:var(--sys-bg);border-color:var(--sys-line);}
+  .col h4{margin:0 0 12px;font-size:13px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  .col.do h4{color:var(--fill);}
+  .col.dont h4{color:var(--sys);}
+  .col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px;}
+  .col li{font-size:14px;color:var(--ink-soft);padding-left:20px;position:relative;line-height:1.5;}
+  .col li::before{position:absolute;left:0;top:0;font-family:var(--mono);font-weight:700;}
+  .col.do li::before{content:"+";color:var(--fill);}
+  .col.dont li::before{content:"–";color:var(--sys);}
+  .col li b{color:var(--ink);font-weight:600;}
+
+  footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;}
+  footer .mono{font-family:var(--mono);}
+
+  a.anchor{color:inherit;text-decoration:none;}
+
+  @media (max-width:620px){
+    .field{grid-template-columns:1fr;gap:6px;}
+    .cols{grid-template-columns:1fr;}
+    .part{flex-wrap:wrap;}
+    .part .pd{margin-left:0;text-align:left;}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .sec,.rule,.col{animation:rise .5s cubic-bezier(.2,.7,.3,1) both;}
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  }
+</style>
+
+<div class="wrap">
+  <p class="kicker">Klemco CS · Field Guide</p>
+  <h1>Sales Order — Field Guide</h1>
+  <p class="lede">What every field on a Sales Order is for — in plain terms. The <strong>Details</strong> tab
+  is the order itself; the <strong>More Info</strong> tab holds the Klemco workflow fields plus optional
+  ERPNext extras.</p>
+
+  <div class="rule">
+    <span class="rk">Rule of thumb</span>
+    <p>A normal order needs only: <em>Company</em> (Klemco India), <em>Customer</em>, the <em>Items</em>, a
+    <em>Delivery Date</em>, and the source <em>Warehouse</em>. Tax now fills in by itself. Unsure about a
+    field marked <em>System-set</em> or <em>Optional</em>? Leave it — it won't hold up the order.</p>
+  </div>
+
+  <ul class="legend">
+    <li><span class="tag tag-fill">You fill</span> you enter or attach it</li>
+    <li><span class="tag tag-sys">System-set</span> filled automatically — read only</li>
+    <li><span class="tag tag-opt">Optional</span> only if you use that feature</li>
+  </ul>
+
+  <nav class="toc" aria-label="Sections">
+    <div class="grp">Details tab — the order</div>
+    <ul>
+      <li><a href="#order-header">Order header</a></li>
+      <li><a href="#accounting-dimensions">Accounting Dimensions</a></li>
+      <li><a href="#currency">Currency &amp; Price List</a></li>
+      <li><a href="#items">Items &amp; Warehouse</a></li>
+      <li><a href="#taxes">Taxes</a></li>
+      <li><a href="#totals">Totals &amp; Discount</a></li>
+    </ul>
+    <div class="grp" style="margin-top:12px">Working with orders</div>
+    <ul>
+      <li><a href="#order-chain">The document flow</a></li>
+      <li><a href="#make-dn">Create a Delivery Note</a></li>
+      <li><a href="#connections">See linked documents</a></li>
+      <li><a href="#who-when">Who created it / when</a></li>
+      <li><a href="#dispatch-dn">Warehouse dispatch</a></li>
+      <li><a href="#freight">Adding freight</a></li>
+      <li><a href="#share">Sharing a document</a></li>
+    </ul>
+    <div class="grp" style="margin-top:12px">More Info — Built for Klemco</div>
+    <ul>
+      <li><a href="#customer-service">Customer Service</a></li>
+      <li><a href="#order-execution">Order Execution</a></li>
+      <li><a href="#discount-approval">Discount Approval</a></li>
+      <li><a href="#credit-control">Credit Control</a></li>
+      <li><a href="#mandate-documents">Mandate Documents</a></li>
+      <li><a href="#dispatch-tracking">Dispatch &amp; Tracking</a></li>
+    </ul>
+    <div class="grp" style="margin-top:12px">Setup</div>
+    <ul>
+      <li><a href="#email-automation">Email automation</a></li>
+      <li><a href="#billing-warehouse">Warehouse on billing</a></li>
+    </ul>
+    <div class="grp" style="margin-top:12px">More Info — Standard ERPNext</div>
+    <ul>
+      <li><a href="#status">Status</a></li>
+      <li><a href="#commission">Commission</a></li>
+      <li><a href="#sales-team">Sales Team</a></li>
+      <li><a href="#auto-repeat">Auto Repeat</a></li>
+      <li><a href="#print-settings">Print Settings</a></li>
+      <li><a href="#utm-analytics">UTM Analytics</a></li>
+      <li><a href="#additional-info">Additional Info</a></li>
+    </ul>
+  </nav>
+
+  <!-- ============ DETAILS TAB ============ -->
+  <div class="part">
+    <span class="pn">Details</span>
+    <h2>The order form</h2>
+    <span class="pd">The main tab — who's buying, what, from where, and for how much.</span>
+  </div>
+
+  <section class="sec" id="order-header">
+    <h3><a class="anchor" href="#order-header">Order header</a></h3>
+    <p class="purpose">Who the order is for and its key dates.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Company</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Which Klemco legal entity is selling. <b>Use "Klemco India"</b> — it holds the GSTIN,
+        so tax auto-applies. ("Klemco India (Demo)" has no GSTIN and won't auto-tax.)</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Series</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The order-number format (e.g. SAL-ORD-YYYY-#####). Auto-assigned on save.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Customer</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Who's buying. Picking the customer pulls their price list, addresses, tax info and
+        the Klemco Rate-Contract flag.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Order Type</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">ERPNext's own classification — <b>Sales</b> / Maintenance / Shopping Cart. Leave on
+        <b>Sales</b> for a normal order. <em>(This is different from the Klemco "Order Type" on More Info,
+        which is One-Shot vs Phased.)</em></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Date</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The order date — defaults to today; editable.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Delivery Date</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">When the customer expects the goods. Can't be back-dated (Klemco rule FR-SO-16).</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Tax Id</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The customer's GSTIN — pulled from their record.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Skip Delivery Note</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Tick for orders with <b>no physical shipment</b> (e.g. services), so the order
+        doesn't wait on a Delivery Note. Leave unticked for goods.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="accounting-dimensions">
+    <h3><a class="anchor" href="#accounting-dimensions">Accounting Dimensions</a></h3>
+    <p class="purpose">Tag the order for financial reporting.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Cost Center</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The cost centre the revenue is booked against — usually defaults from the company.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Project</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Link the order to a Project to track revenue/cost against it. You can create a new
+        Project inline from here (CS roles can now do this). Leave blank if it's not project work.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="currency">
+    <h3><a class="anchor" href="#currency">Currency &amp; Price List</a></h3>
+    <p class="purpose">The pricing basis for the order.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Currency / Exchange Rate</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Order currency (INR) and its conversion rate — set from the customer / price list.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Price List</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Which price list supplies the item rates. Defaults from the customer; change it to
+        switch the whole order to a different price list.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="items">
+    <h3><a class="anchor" href="#items">Items &amp; Warehouse</a></h3>
+    <p class="purpose">The products being sold and where they ship from.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Items table</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">The heart of the order — each line: <b>Item Code</b>, <b>Delivery Date</b>,
+        <b>Quantity</b>, and Rate. Add rows with <em>Add row</em> / <em>Add multiple</em>, or via
+        <em>Get Items From</em> (pull from a Quotation).</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Scan Barcode</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Add items by scanning a barcode instead of typing the code.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Set Source Warehouse</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">The warehouse the goods ship <b>from</b>. Setting it here applies it to <b>every item
+        row</b> at once. It drives the stock check, reservation, the Delivery Note source, and the Klemco
+        low-stock / backorder warning. For a finished-goods sale, pick <b>Finished Goods</b>.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Reserve Stock</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Earmark on-hand stock for this order so it can't be committed elsewhere (needs stock
+        reservation enabled). Leave off for normal orders.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="taxes">
+    <h3><a class="anchor" href="#taxes">Taxes</a></h3>
+    <p class="purpose">The GST applied to the order — now determined automatically.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Tax Category</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc"><b>In-State</b> (CGST+SGST) vs <b>Out-State</b> (IGST) — now <b>auto-picked</b> from
+        the plant state (the company GSTIN) vs the customer's delivery state. You no longer choose it by hand;
+        override only for a special case.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Sales Taxes and Charges Template</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The actual GST template applied (e.g. <em>Output GST In-state / Out-state</em>) — filled
+        automatically from the Tax Category. The rows below it show the CGST/SGST/IGST lines.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Shipping Rule</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Auto-adds a freight/handling charge based on a predefined rule. Leave blank if you
+        don't charge freight on the order.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Incoterm / Named Place</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">International delivery terms (EXW, FOB, CIF…) and the place they apply. For exports
+        only — leave blank for domestic orders.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="totals">
+    <h3><a class="anchor" href="#totals">Totals &amp; Discount</a></h3>
+    <p class="purpose">The order value — computed by the system — plus an optional order-level discount.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Total / Net Total / Grand Total</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Item total, total taxes, and the final <b>Grand Total</b> (with <em>Rounded Total</em>
+        and <em>In Words</em>). All calculated — nothing to type.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Advance Paid</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Any advance received against the order, from linked Payment Entries.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Additional Discount</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">An <b>order-level</b> discount (a % or amount) applied on the Net Total or Grand
+        Total, plus an optional Coupon Code. Note: line-item discounts are blocked for Rate-Contract
+        customers (BR-SO-01).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WORKING WITH ORDERS ============ -->
+  <div class="part">
+    <span class="pn">Flow</span>
+    <h2>Working with orders</h2>
+    <span class="pd">How documents connect, and the everyday tasks around them.</span>
+  </div>
+
+  <section class="sec" id="order-chain">
+    <h3><a class="anchor" href="#order-chain">The document flow</a></h3>
+    <p class="purpose">Each document is created from the one before it — you don't retype anything.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">The chain</span><span class="tag tag-sys">Order → Cash</span></div>
+        <p class="fdesc"><b>Quotation → Sales Order → Delivery Note → Sales Invoice</b> (payment follows).
+        A quotation becomes an order; the order is dispatched on a Delivery Note; the invoice bills for it.
+        Klemco requires each Sales Invoice to come from a Sales Order.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Submit first</span><span class="tag tag-fill">Key rule</span></div>
+        <p class="fdesc">You can only build the <b>next</b> document from a <b>submitted</b> one — a
+        Delivery Note or Invoice can't be made from a <em>draft</em> Sales Order. Fill the order, then
+        <b>Submit</b> it (discount approval / credit hold, if any, must clear first).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="make-dn">
+    <h3><a class="anchor" href="#make-dn">Create a Delivery Note from an order</a></h3>
+    <p class="purpose">Always start from the submitted Sales Order — not a blank Delivery Note.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Steps</span><span class="tag tag-fill">You do</span></div>
+        <p class="fdesc"><b>1.</b> Open the Sales Order and <b>Submit</b> it. &nbsp;<b>2.</b> Click
+        <b>Create → Delivery Note</b> (top-right), or the <b>Save &amp; Create Delivery Note</b> button.
+        &nbsp;<b>3.</b> The Delivery Note opens <b>pre-filled with the order's items</b> — set the
+        <b>Source Warehouse</b> (one that has stock) → <b>Submit</b>.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Can't see the option?</span><span class="tag tag-sys">Why</span></div>
+        <p class="fdesc">The order is probably still a <b>Draft</b> (submit it first), or it's already been
+        <b>fully delivered</b> (nothing left). A blank <em>New Delivery Note</em> from the list won't link to
+        the order unless you use <b>Get Items From → Sales Order</b> — so start from the order instead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="connections">
+    <h3><a class="anchor" href="#connections">See a document's linked documents</a></h3>
+    <p class="purpose">Trace the whole flow from any document.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Connections tab</span><span class="tag tag-sys">Built in</span></div>
+        <p class="fdesc">Open any document → the <b>Connections</b> tab (in the tab bar). It shows every
+        linked document up and down the chain — Quotation, Sales Order, Delivery Note, Sales Invoice,
+        Payment — with counts. Click any to jump. The document's <b>timeline</b> on the right also lists them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="who-when">
+    <h3><a class="anchor" href="#who-when">Who created an order, and when</a></h3>
+    <p class="purpose">The list already carries this — just surface it.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Sort &amp; columns</span><span class="tag tag-opt">List view</span></div>
+        <p class="fdesc">The list is sorted by <b>Created On</b> (the “2 M / 1 M” = time since creation;
+        hover for the exact date). To show them as columns, use the list's <b>⚙ (gear) → Pick Columns</b> and
+        add <b>Created On</b> and <b>Created By</b>. <em>(These are system fields, so the choice saves per
+        user; ask your admin for a shared saved view if the whole team should see them by default.)</em></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="dispatch-dn">
+    <h3><a class="anchor" href="#dispatch-dn">Warehouse dispatch — Docket, Tracking, POD</a></h3>
+    <p class="purpose">These are captured on the <b>Delivery Note</b> (the warehouse's document), because they're
+    known at dispatch — after the order is submitted and locked.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Where</span><span class="tag tag-sys">Delivery Note</span></div>
+        <p class="fdesc">Open the Delivery Note → <b>Dispatch &amp; Tracking</b> section → <b>Docket / LR #</b>,
+        <b>Tracking URL</b>, <b>Proof of Delivery (POD)</b>. These stay editable <em>even after the Delivery
+        Note is submitted</em>, so the warehouse can add the POD once the goods are delivered.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Who</span><span class="tag tag-fill">Warehouse</span></div>
+        <p class="fdesc">The <b>Stock User / Stock Manager</b> role (who creates the Delivery Note) fills these.
+        Mandate docs — <b>Customer PO Copy, Test Certificates, Client Order Confirmation</b> — are provided
+        earlier by <b>CS / Sales on the Sales Order</b> before confirmation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="freight">
+    <h3><a class="anchor" href="#freight">Adding freight (and other charges)</a></h3>
+    <p class="purpose">Freight is a charge line, not a field — added when the amount is known (after dispatch).</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">How</span><span class="tag tag-fill">You add</span></div>
+        <p class="fdesc">On the <b>Sales Invoice</b> (billed after delivery) → <b>Taxes</b> table → <b>Add row</b>
+        → <b>Type: Actual</b>, <b>Account Head: “Freight and Forwarding Charges”</b>, <b>Amount:</b> the freight
+        cost. It's added to the invoice total. (You can add the same line on the Delivery Note if you prefer to
+        record it at dispatch.)</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">When</span><span class="tag tag-sys">After the Challan</span></div>
+        <p class="fdesc">Freight is known once the Delivery Challan is raised and the transporter confirms the
+        cost — so it's normally entered at <b>billing time</b> on the invoice. For automatic freight (by value
+        or weight) an admin can set up a <b>Shipping Rule</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="share">
+    <h3><a class="anchor" href="#share">Sharing a document with a specific person</a></h3>
+    <p class="purpose">Give one person access to one record — on top of their role permissions.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Share button</span><span class="tag tag-opt">Right sidebar</span></div>
+        <p class="fdesc">On any document, the <b>Share</b> action (right sidebar) lets you grant a specific
+        user access to <em>this one record</em> — even if their role wouldn't normally show it. Useful for
+        looping someone in (e.g. an escalated complaint to the Inventory Head).</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">The checkboxes</span><span class="tag tag-sys">Access levels</span></div>
+        <p class="fdesc"><b>Read</b> = view · <b>Write</b> = edit · <b>Submit</b> = submit · <b>Share</b> =
+        re-share to others. The <b>“Everyone”</b> row shares with all users. Sharing adds access; it never
+        removes what a role already grants.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <div class="part">
+    <span class="pn">More Info · 1</span>
+    <h2>Built for Klemco</h2>
+    <span class="pd">The Customer-Service workflow — order type, approvals, credit &amp; dispatch documents.</span>
+  </div>
+
+  <section class="sec" id="customer-service">
+    <h3><a class="anchor" href="#customer-service">Customer Service</a></h3>
+    <p class="purpose">Sets how the order is fulfilled and flags special customer terms.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Order Type</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc"><b>One-Shot</b> = the whole order ships in one delivery. <b>Open (Phased Delivery)</b>
+        = staggered delivery against a plan, where each line can carry its own required date. Pick
+        <b>One-Shot</b> for a normal order.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Rate Contract Customer</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Pulled from the Customer master. When ticked, <b>discounts are blocked</b> on every
+        line. You don't set it here — it comes from the customer. <span class="ref">BR-SO-01</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="order-execution">
+    <h3><a class="anchor" href="#order-execution">Order Execution</a></h3>
+    <p class="purpose">Instructions and transporter preference passed to the warehouse and dispatch.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Delivery Instructions</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Special handling — unloading requirements, delivery time windows, safety notes.
+        Printed on the Delivery Challan for the warehouse and transporter.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Preferred 3PL Partner</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">The courier to use — Mahindra Logistics, DTDC, Blue Dart, Delhivery, EcomExpress,
+        FedEx India, or Other. A routing hint for dispatch.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="discount-approval">
+    <h3><a class="anchor" href="#discount-approval">Discount Approval</a></h3>
+    <p class="purpose">Tracks whether an extra discount needed sign-off. Mostly filled by the approval workflow.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Discount Approval Status</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Not Required · Discount Approval — Sales Head · Approved · Rejected. Set automatically
+        from the discount given versus the threshold.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Approved By / Timestamp</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Who approved the extra discount, and when.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Discount Threshold (%)</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">The limit above which an order needs <b>Sales Head approval</b>. A line discount over
+        this % routes the order for sign-off before it can proceed. <span class="ref">BR-OE-01</span></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Approval / Rejection Remarks</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Notes the approver leaves when approving or rejecting.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="credit-control">
+    <h3><a class="anchor" href="#credit-control">Credit Control</a></h3>
+    <p class="purpose">Shows whether the order is blocked for credit reasons. Maintained by the credit check — read only.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Credit Hold Status</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc"><b>Clear</b> or <b>On Hold</b>. An order goes on hold when the customer breaches
+        their credit terms; Finance must release it.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Hold Reason</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Why the order is on credit hold.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Released By</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">The Finance user who cleared the hold.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="mandate-documents">
+    <h3><a class="anchor" href="#mandate-documents">Mandate Documents</a></h3>
+    <p class="purpose">Compliance documents that must accompany the order.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Customer PO Copy</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Scanned or digital purchase order from the customer. Some customers require it before
+        the order can proceed. <span class="ref">BR-SO-02</span></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Test Certificates</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Quality / test certificates for the goods. Supports multiple files or a ZIP.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="dispatch-tracking">
+    <h3><a class="anchor" href="#dispatch-tracking">Client Order Confirmation</a></h3>
+    <p class="purpose">The customer's SKU-mapping document, uploaded on the order before confirmation.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Client Order Confirmation</span><span class="tag tag-fill">CS / Sales</span></div>
+        <p class="fdesc">A <b>Word document (.docx / .doc only)</b> supplied by the customer that maps
+        <em>their</em> internal SKUs to Klemco SKUs — the warehouse needs it during packing. On save it is
+        <b>auto-attached to the linked Delivery Note</b>. <span class="ref">FR-SO-15 · BR-SO-08</span></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Docket / LR, Tracking, POD</span><span class="tag tag-sys">On the Delivery Note</span></div>
+        <p class="fdesc">These are now captured by the <b>warehouse on the Delivery Note</b> (Dispatch &amp;
+        Tracking section) — not here — because they're known at dispatch, after the order is submitted. See
+        <a class="anchor" href="#dispatch-dn" style="color:var(--accent);text-decoration:underline;">Warehouse
+        dispatch</a> below.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <div class="part">
+    <span class="pn">More Info · 2</span>
+    <h2>Standard ERPNext</h2>
+    <span class="pd">Stock features that ship with ERPNext. Most are optional — set them only if you use them.</span>
+  </div>
+
+  <section class="sec" id="status">
+    <h3><a class="anchor" href="#status">Status</a></h3>
+    <p class="purpose">Progress indicators ERPNext maintains automatically as the order is delivered and billed. Nothing to fill here.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Status</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Where the order is in its lifecycle — Draft → To Deliver and Bill → Completed →
+        Closed / Cancelled.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">% Delivered</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">How much of the ordered quantity has shipped, via Delivery Notes.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">% Amount Billed</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">How much of the order value has been invoiced, via Sales Invoices.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">% Picked</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">How much has been picked in the warehouse, via Pick Lists — if you use picking.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="commission">
+    <h3><a class="anchor" href="#commission">Commission</a></h3>
+    <p class="purpose">Use only if an <b>external agent / sales partner</b> earns a commission on this order.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Sales Partner</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">The external agent, broker, or dealer for this deal.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Commission Rate / Total</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">The % and the resulting amount payable to that partner. Leave the whole section blank
+        if there's no external partner.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sales-team">
+    <h3><a class="anchor" href="#sales-team">Sales Team</a></h3>
+    <p class="purpose">Split <b>internal</b> credit or incentive across your own salespeople — for reporting.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Sales Team</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Add rows of <b>Sales Person + contribution %</b> (must total 100%). Leave empty if you
+        don't track per-salesperson attribution.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="auto-repeat">
+    <h3><a class="anchor" href="#auto-repeat">Auto Repeat</a></h3>
+    <p class="purpose">Turn this into a <b>recurring order</b> that ERPNext re-creates on a schedule. For standing / subscription orders only.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">From / To Date</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">The active window for the recurrence.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Auto Repeat</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Links to the schedule (daily / weekly / monthly…) that regenerates the order. Ignore
+        for one-off orders.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="print-settings">
+    <h3><a class="anchor" href="#print-settings">Print Settings</a></h3>
+    <p class="purpose">Cosmetic controls for the printed PDF — they don't change the order data. Defaults are usually fine.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Letter Head</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Which company letterhead appears on the printout.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Print Heading</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">An alternate title for the printed document.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Print Language</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Language of the printout.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Group same items</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">Merge duplicate item rows on the print.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="utm-analytics">
+    <h3><a class="anchor" href="#utm-analytics">UTM Analytics</a></h3>
+    <p class="purpose">Marketing attribution — which campaign produced this order. Relevant only if you track campaigns in the CRM.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Source / Medium / Campaign / Content</span><span class="tag tag-opt">Optional</span></div>
+        <p class="fdesc">The marketing channel or campaign the order can be traced back to. Otherwise leave blank.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="additional-info">
+    <h3><a class="anchor" href="#additional-info">Additional Info</a></h3>
+    <p class="purpose">Miscellaneous references.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Customer's Purchase Order / Date</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">The customer's PO number and date. <em>(Klemco also captures the actual PO file under
+        Mandate Documents → Customer PO Copy.)</em></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Internal / Inter-company fields</span><span class="tag tag-sys">System-set</span></div>
+        <p class="fdesc">Is Internal Customer, Represents Company, Inter Company Order Reference — used only for
+        <b>inter-company</b> orders (one group company selling to another). Ignore for external customers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BILLING NOTE ============ -->
+  <div class="part">
+    <span class="pn">Billing</span>
+    <h2>The warehouse on a Sales Invoice</h2>
+    <span class="pd">Why billing shows no warehouse — and how to get it when you need it.</span>
+  </div>
+  <section class="sec" id="billing-warehouse">
+    <p class="purpose" style="margin-bottom:14px">A Sales Invoice shows <b>no warehouse</b> by default — on purpose.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Normal flow</span><span class="tag tag-sys">Via Delivery Note</span></div>
+        <p class="fdesc">Order → <b>Delivery Note</b> (dispatch — you pick the warehouse there) → <b>Sales
+        Invoice</b> (billing). Stock already moved on the Delivery Note, so the invoice just bills for what
+        shipped — no warehouse needed.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Direct billing</span><span class="tag tag-fill">Tick Update Stock</span></div>
+        <p class="fdesc">Billing without a Delivery Note? Tick <b>Update Stock</b> on the invoice — the
+        <b>Set Source Warehouse</b> field then appears (pre-filled with the company's Finished Goods
+        warehouse). Pick where stock comes from; billing reduces it. Don't use it when a Delivery Note already
+        moved the stock — ERPNext hides the option once items come from a DN, to avoid deducting twice.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EMAIL AUTOMATION ============ -->
+  <div class="part">
+    <span class="pn">Setup</span>
+    <h2>Email automation</h2>
+    <span class="pd">The backend account the system sends all automated mail from.</span>
+  </div>
+  <section class="sec" id="email-automation">
+    <p class="purpose" style="margin-bottom:14px">Configured and verified with a live test send — automated
+    CS email now goes out from a single <b>default outgoing</b> account.</p>
+    <div class="fields">
+      <div class="field">
+        <div class="fmeta"><span class="fname">Account</span><span class="tag tag-sys">Configured</span></div>
+        <p class="fdesc">Email Account <b>“Klemcotest”</b> — <span class="ref">klemcotest@gmail.com</span><br>
+        SMTP <b>smtp.gmail.com : 587</b> (TLS) · Outgoing ✓ · <b>Default Outgoing ✓</b> · Incoming off
+        (not needed for sending).</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">What sends through it</span><span class="tag tag-sys">Automatic</span></div>
+        <p class="fdesc">Complaint logged · Order acknowledgement · Dispatch notification · Credit-hold
+        alerts. Every Klemco CS notification uses whichever account is marked <em>Default Outgoing</em>.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Change sender or password</span><span class="tag tag-fill">Admin</span></div>
+        <p class="fdesc">Search → <b>Email Account</b> → <em>Klemcotest</em> → edit the email address or
+        password → <b>Save</b>. ERPNext tests the SMTP connection on save and stores the password
+        <b>encrypted</b> — a wrong password fails immediately with an auth error.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Gmail App Password</span><span class="tag tag-opt">If needed</span></div>
+        <p class="fdesc">If Google ever rejects the plain password, generate a 16-character
+        <b>App Password</b> (myaccount.google.com → Security → 2-Step Verification → App passwords → Mail)
+        and use that instead.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Other sites</span><span class="tag tag-opt">Note</span></div>
+        <p class="fdesc">Email accounts and passwords are <b>per-site encrypted secrets</b> — they are not
+        carried in the application image. The production site must be configured separately the same way.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <div class="cheat">
+    <h2>What do I actually fill in?</h2>
+    <p>For a normal customer order:</p>
+    <div class="cols">
+      <div class="col do">
+        <h4>You fill in</h4>
+        <ul>
+          <li><b>Company</b> (Klemco India) &amp; <b>Customer</b></li>
+          <li><b>Items</b> — code, qty, delivery date</li>
+          <li><b>Set Source Warehouse</b> — usually Finished Goods</li>
+          <li><b>Plant Order Type</b> (One-Shot) + any delivery notes / 3PL</li>
+          <li><b>Customer PO / Test Certs / Client Order Confirmation</b>, if required</li>
+        </ul>
+      </div>
+      <div class="col dont">
+        <h4>The system handles</h4>
+        <ul>
+          <li><b>Series, Totals, Grand Total</b> — computed automatically</li>
+          <li><b>Tax</b> — In-State / Out-State picked from plant vs delivery state</li>
+          <li><b>Status</b> &amp; the % Delivered / Billed / Picked meters</li>
+          <li><b>Discount Approval, Credit Control, Rate Contract</b> flag</li>
+          <li><b>Commission, Sales Team, Auto Repeat, UTM</b> — only if you use them</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Klemco CS — Sales Order field reference</span>
+    <span class="mono">Source: klemco_cs/docs/sales_order_field_guide.md</span>
+  </footer>
+</div>
+</body>
+</html>{% endraw %}
