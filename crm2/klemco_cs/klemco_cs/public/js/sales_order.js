@@ -37,7 +37,7 @@ frappe.ui.form.on('Sales Order', {
         _sitc_ui(frm);
         _km_production_ui(frm);
         _mandate_docs_ui(frm);
-        _import_items_ui(frm);
+        window.klemco_item_import && window.klemco_item_import.setup(frm);   // Excel/CSV items
 
         // Once billed, item lines are frozen — hide "Update Items" (server also blocks it).
         if ((frm.doc.per_billed || 0) > 0) {
@@ -78,84 +78,6 @@ function _pf_note(frm) {
         frappe.show_alert({message: __('Packaging & Forwarding ({0}%) will be added before tax when you Save.',
             [frm.doc.cs_pf_rate || 1.5]), indicator: 'blue'}, 5);
     }
-}
-
-// Import Items from a plain Excel (.xlsx) or CSV (Item Code + Qty, optional Rate / Warehouse /
-// Delivery Date) — a friendly alternative to the native grid Upload, which needs the exact 7-row
-// Download template. Rows are appended; Item Name / Rate fill server-side on Save.
-function _import_items_ui(frm) {
-    frm.add_custom_button(__('Import Items'), () => {
-        new frappe.ui.FileUploader({
-            allow_multiple: false,
-            restrictions: { allowed_file_types: ['.csv', '.xlsx', '.xls'] },
-            on_success(file) {
-                frappe.call({
-                    method: 'klemco_cs.item_import.parse_items_file',
-                    args: { file_url: file.file_url },
-                    freeze: true,
-                    freeze_message: __('Reading the file…'),
-                    callback(r) { _apply_item_rows(frm, r.message || []); },
-                });
-            },
-        });
-    }, __('Get Items From'));
-}
-
-// Normalise a spreadsheet date cell to YYYY-MM-DD: ISO datetime (real Excel date) → date part;
-// dd.mm.yyyy / dd-mm-yyyy / dd/mm/yyyy (day-first) → yyyy-mm-dd; yyyy-mm-dd passes through.
-function _norm_date(v) {
-    if (!v) return '';
-    v = v.toString().trim();
-    if (v.length >= 10 && v[10] === 'T') return v.slice(0, 10);
-    let m = v.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
-    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
-    return v;   // yyyy-mm-dd or anything else — let ERPNext validate
-}
-
-// Map header columns (Item Code / Qty / Rate / Warehouse / Delivery Date) and append a row per line.
-// The header can be on any row (blank rows above it are tolerated); data starts on the next row.
-function _apply_item_rows(frm, rows) {
-    rows = rows || [];
-    let hIdx = -1, col = null;
-    for (let i = 0; i < rows.length; i++) {
-        const head = (rows[i] || []).map((h) => (h == null ? '' : h).toString().trim().toLowerCase());
-        const find = (re) => head.findIndex((h) => re.test(h));
-        const item = find(/item.?code|^item$/);
-        if (item >= 0) {
-            hIdx = i;
-            col = { item, qty: find(/qty|quantity/), rate: find(/rate|price/),
-                    wh: find(/warehouse/), dd: find(/delivery.?date/) };
-            break;
-        }
-    }
-    if (hIdx < 0) {
-        frappe.throw(__("The file needs an 'Item Code' column (plus Qty; Rate / Warehouse / Delivery Date optional)."));
-    }
-    const cell = (r, i) => (i >= 0 && r[i] != null ? r[i].toString().trim() : '');
-    let added = 0, skipped = 0;
-    for (let i = hIdx + 1; i < rows.length; i++) {
-        const r = rows[i] || [];
-        const code = cell(r, col.item);
-        if (!code) {
-            if (r.some((v) => v != null && v.toString().trim())) skipped++;   // non-empty row, no item code
-            continue;
-        }
-        const c = frm.add_child('items');
-        c.item_code = code;
-        c.qty = flt(cell(r, col.qty)) || 1;
-        if (cell(r, col.rate)) c.rate = flt(cell(r, col.rate));
-        if (cell(r, col.wh)) c.warehouse = cell(r, col.wh);
-        const dd = _norm_date(cell(r, col.dd));
-        if (dd) c.delivery_date = dd;
-        added++;
-    }
-    frm.refresh_field('items');
-    frm.dirty();
-    frappe.show_alert({
-        message: __('Imported {0} item(s){1}. Save to fetch names/rates.',
-            [added, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : '']),
-        indicator: added ? 'green' : 'orange',
-    }, 7);
 }
 
 // Mandate Documents — "Upload Documents" button: pick a Type once, then select several files at

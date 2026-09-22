@@ -47,9 +47,12 @@ after_migrate = ['klemco_cs.customizations.apply_customizations',
                  'klemco_cs.ai_assistant.api.install_crm_spa_widget']
 
 # Form (client) scripts attached to stock doctypes for the v1.3 wireframe changes.
+# item_import.js is the shared Excel/CSV "Import Items" helper (also re-routes the items grid's
+# stock CSV-only Upload button); it only exports window.klemco_item_import, which the doctype
+# script calls from refresh. Frappe concatenates the list per doctype.
 doctype_js = {
-    'Sales Order': 'public/js/sales_order.js',
-    'Quotation': 'public/js/quotation.js',
+    'Sales Order': ['public/js/item_import.js', 'public/js/sales_order.js'],
+    'Quotation': ['public/js/item_import.js', 'public/js/quotation.js'],
     'Delivery Note': 'public/js/delivery_note.js',
     'Sales Invoice': 'public/js/sales_invoice.js',
     'Item': 'public/js/item.js',

@@ -13,6 +13,8 @@ frappe.ui.form.on('Quotation', {
         _sitc_ui(frm);
         _discount_ui(frm);
         _cust_picker(frm);
+        // Excel/CSV "Import Items" + the items grid's Upload button (shared with Sales Order).
+        window.klemco_item_import && window.klemco_item_import.setup(frm);
         // Auto-show the TDS button whenever there's a datasheet to merge (item master / line /
         // company standard) — no "TDS for Quotation" checkbox needed.
         if (!frm.is_new()) {

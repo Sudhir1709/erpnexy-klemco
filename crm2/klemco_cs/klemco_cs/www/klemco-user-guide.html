@@ -610,6 +610,8 @@ SITC / Project</strong> and you get:</p>
   <li><strong>BOQ File</strong> — attach the bill of quantities (mandatory for SITC).</li>
   <li>A single lump-sum line <strong>"SITC Works (as per BOQ)"</strong> is added automatically — just type the amount.</li>
 </ul>
+<p>Many lines? <strong>Get Items From &rarr; Import Items</strong> (or the items grid&rsquo;s <strong>Upload</strong> button)
+loads an Excel / CSV list of <em>Item Code, Qty</em> into the quotation &mdash; exactly as on a Sales Order (see the FAQ).</p>
 <p>Click <strong>Proforma Invoice</strong> on a Quotation to print a non-tax proforma. Both the Project Type, Scope
 and BOQ carry forward when you create the Sales Order.</p>
 
@@ -618,8 +620,9 @@ and BOQ carry forward when you create the Sales Order.</p>
   <li><strong>Company = Klemco India</strong> (the GST company) and pick the <strong>Customer</strong>.</li>
   <li><strong>Order Type</strong> — <em>One-Shot</em> (deliver once) or <em>Open (Phased Delivery)</em> (multiple
       deliveries; each line needs its own Delivery Date).</li>
-  <li>Add items. Fast options: <strong>Import Items</strong> (upload a simple <em>Item Code, Qty</em> CSV) under the
-      <strong>Get Items From</strong> menu, or type them in.</li>
+  <li>Add items. Fast options: <strong>Import Items</strong> (upload a simple <em>Item Code, Qty</em> Excel or CSV
+      file) under the <strong>Get Items From</strong> menu &mdash; the items grid&rsquo;s <strong>Upload</strong> button does
+      the same &mdash; or type them in.</li>
   <li>Set a per-line <strong>Discount %</strong> right in the items grid (editable for Regular/COD customers).</li>
   <li>Attach paperwork — the <strong>Documents</strong> menu &rarr; <strong>Upload Documents</strong> lets you add
       several files at once (PO copy, test certificates &hellip;).</li>
@@ -770,12 +773,16 @@ the tax invoice is complete. (The "Klemco India (Demo)" company has no GSTIN and
 <h3>How do I know a Plant order&rsquo;s goods are under production?</h3>
 <p>The <strong>Klemco (KM) Order status</strong> tracks it: <em>Draft &rarr; KM Confirmed &rarr; <strong>In Production</strong> &rarr; Inward Complete &rarr; Transfer Billing Done</em>. &ldquo;Under production&rdquo; means the Plant Order is at <strong>In Production</strong>; once made, it moves to <strong>Inward Complete</strong> (goods in stock). Reach the Plant Order from the Sales Order&rsquo;s <strong>Connections</strong> tab, or from <strong>All Plant Orders</strong> in the sidebar.</p>
 
-<h3>Can I import a list of items and quantities from Excel into a Sales Order?</h3>
-<p><strong>Yes.</strong> The Sales Order <strong>items grid has Download / Upload</strong> buttons:</p>
+<h3>Can I import a list of items and quantities from Excel into a Quotation or Sales Order?</h3>
+<p><strong>Yes</strong> &mdash; Excel (<em>.xlsx</em>) or CSV, on both documents:</p>
 <ol class="steps">
-  <li>Click <strong>Download</strong> to get the template (CSV/XLSX).</li>
-  <li>Fill in <strong>Item Code</strong> and <strong>Qty</strong> (and optionally Rate, Warehouse).</li>
-  <li>Click <strong>Upload</strong> &mdash; the rows load into the grid.</li>
+  <li>Prepare a sheet with a header row: <strong>Item Code</strong> (required), <strong>Qty</strong>, and optionally
+      <strong>Rate</strong>, <strong>Warehouse</strong>, <strong>Delivery Date</strong> (Sales Order only). The header may sit
+      on any row; extra columns are ignored. The template from the grid&rsquo;s <strong>Download</strong> button works too.</li>
+  <li>Open the Quotation / Sales Order and click <strong>Get Items From &rarr; Import Items</strong>, or the items
+      grid&rsquo;s <strong>Upload</strong> button &mdash; pick the file.</li>
+  <li>The rows are added to the grid (a blank first line is removed). <strong>Save</strong> &mdash; item names and
+      prices fill in from the Item master / price list; rows without an Item Code are skipped and reported.</li>
 </ol>
 <p>Also handy: <strong>Add multiple</strong> (pick many items at once), and the full <strong>Data Import</strong> tool for large bulk loads.</p>
 
