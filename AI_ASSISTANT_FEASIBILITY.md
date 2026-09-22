@@ -97,14 +97,31 @@ After the initial PoC, three follow-ups were built and verified against the live
 
 ### 1. Floating chat bubble (every desk page + CRM SPA)
 - `public/js/ai_widget.js` — a self-contained floating "💬" bubble + chat panel, registered desk-wide
-  via `app_include_js = "/assets/klemco_cs/js/ai_widget.js"` (raw path, no build), and injected into
-  the Frappe CRM SPA (`/crm`) via `install_crm_spa_widget()` (re-applied on migrate).
-- ⚠️ **Dev-stack caveat (honest):** the Frappe **desk** and **CRM SPA** hydrate from a built
-  boot/index and drop *statically-injected* `<script>` tags, so the bubble only auto-attaches after a
-  proper `bench build` (which the **production image build runs**). This dev stack has **no Node**, so
-  `bench build` can't run here — the bubble code is in place and correct, but on this particular stack
-  use the **"AI Help" menu → `/ai-help` page** (fully working). The bubble will light up automatically
-  in any normally-built deployment.
+  via `app_include_js = "klemco_cs.bundle.js"`, with `install_widget_bundle()` publishing it to
+  `assets.json` and `install_crm_spa_widget()` injecting it into the CRM SPA (`/crm`).
+- ✅ **Bubble fully solved end-to-end — one deploy step remains.** Full diagnosis (all verified):
+  1. The desk loads JS from a **build-time manifest**, so the bubble needs a real `bench build`.
+  2. `bench build` *does* run on this stack — node ships in the base image under `~/.nvm` (just off
+     `PATH`), and esbuild is present. The one gap was that `klemco_cs` lacked **`patches.txt`**, so the
+     builder's `is_frappe_app()` check rejected it (now added). With the bundle source named
+     `klemco_cs.bundle.js`, `bench build --app klemco_cs` succeeds and the desk **does** load the
+     hashed bundle.
+  3. **Final blocker:** the running **frontend container** serves `/assets/klemco_cs` via a **broken
+     symlink** (the app isn't baked into the frontend image), so the built bundle 404s — the *same*
+     reason `hrms`/`india_compliance` desk JS also 404 on this stack.
+  - **The fix is to build `klemco_cs` into the image** (`Dockerfile.klemco` now runs `bench build`) and
+    switch the stack to `CUSTOM_IMAGE`. Then the frontend has the app, its asset symlink resolves, the
+    manifest includes the bundle, and the bubble lights up on every desk page — and the whole feature
+    becomes durable. This is a deliberate deploy (stack recreate; data safe on volumes), not live
+    container surgery. Until then, the fully-working entry point is the **"AI Help" menu → `/ai-help`**.
+
+### Persistence note (important)
+The 8080 stack runs the **stock `frappe/erpnext:v16.14.0` image**; `klemco_cs` currently lives only in
+the running container's writable layer (+ this git repo). The **API key persists** (it's in
+`site_config.json` on the `sites` **volume**), but the **app code does not survive a from-image
+recreate**. To make the whole feature (and a built bubble) durable, build `klemco_cs` into a custom
+image (`Dockerfile.klemco` + a `bench build` step via the frappe_docker custom-apps pipeline) and point
+the 8080 stack at `CUSTOM_IMAGE`. This is the single task that resolves both durability and the bubble.
 
 ### 2. Gated write-actions (create records) — ✅ live-tested
 - The model can only **propose** a record (`propose_create` tool) — it never writes. The reply carries a

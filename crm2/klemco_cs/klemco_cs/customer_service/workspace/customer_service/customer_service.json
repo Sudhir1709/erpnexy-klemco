@@ -1,22 +1,162 @@
 {
  "app": "klemco_cs",
- "content": "[{\"id\":\"cs1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Customer Service</b></span>\",\"col\":12}},{\"id\":\"cs2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"CS Complaint\",\"col\":3}},{\"id\":\"cs2b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"KM Order\",\"col\":3}},{\"id\":\"cs3\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+ "charts": [],
+ "content": "[{\"id\": \"cs1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Customer Service</b></span>\", \"col\": 12}}, {\"id\": \"csn1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"New Complaint\", \"col\": 3}}, {\"id\": \"csn2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"New Klemco Order\", \"col\": 3}}, {\"id\": \"cs2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Complaints\", \"col\": 3}}, {\"id\": \"cs2b\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Klemco Orders\", \"col\": 3}}, {\"id\": \"cs3\", \"type\": \"spacer\", \"data\": {\"col\": 12}}]",
+ "creation": "2026-07-12 16:35:39.708078",
+ "custom_blocks": [],
+ "docstatus": 0,
  "doctype": "Workspace",
+ "hide_custom": 0,
+ "idx": 0,
  "is_hidden": 0,
  "label": "Customer Service",
  "links": [
-  {"label":"Complaints","link_count":4,"link_type":"DocType","onboard":1,"type":"Card Break"},
-  {"label":"All Complaints","link_to":"CS Complaint","link_type":"DocType","onboard":1,"type":"Link"},
-  {"label":"Open Complaints","link_to":"CS Complaint","link_type":"DocType","type":"Link"},
-  {"label":"Escalated","link_to":"CS Complaint","link_type":"DocType","type":"Link"},
-  {"label":"Category Mapping","link_to":"CS Complaint Category Map","link_type":"DocType","type":"Link"},
-  {"label":"KM Manufacturing","link_count":1,"link_type":"DocType","type":"Card Break"},
-  {"label":"KM Orders","link_to":"KM Order","link_type":"DocType","type":"Link"}
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Complaints",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "All Complaints",
+   "link_count": 0,
+   "link_to": "CS Complaint",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Open Complaints",
+   "link_count": 0,
+   "link_to": "CS Complaint",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Escalated",
+   "link_count": 0,
+   "link_to": "CS Complaint",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Category Mapping",
+   "link_count": 0,
+   "link_to": "CS Complaint Category Map",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "KM Manufacturing",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "KM Orders",
+   "link_count": 0,
+   "link_to": "KM Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Order Controls",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Discount Matrix",
+   "link_count": 0,
+   "link_to": "CS Discount Matrix",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
  ],
+ "modified": "2026-07-12 16:57:30.672672",
+ "modified_by": "Administrator",
  "module": "Customer Service",
  "name": "Customer Service",
+ "number_cards": [],
+ "owner": "Administrator",
  "public": 1,
- "roles": [{"role":"CS Executive"},{"role":"CS Manager"},{"role":"CS Supervisor"},{"role":"System Manager"}],
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "CS Executive"
+  },
+  {
+   "role": "CS Manager"
+  },
+  {
+   "role": "CS Supervisor"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "label": "New Complaint",
+   "type": "URL",
+   "url": "/app/cs-complaint/new"
+  },
+  {
+   "color": "Green",
+   "label": "New Klemco Order",
+   "type": "URL",
+   "url": "/app/km-order/new"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "All Complaints",
+   "link_to": "CS Complaint",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "All Klemco Orders",
+   "link_to": "KM Order",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Discount Matrix",
+   "link_to": "CS Discount Matrix",
+   "type": "DocType"
+  }
+ ],
  "title": "Customer Service",
  "type": "Workspace"
 }

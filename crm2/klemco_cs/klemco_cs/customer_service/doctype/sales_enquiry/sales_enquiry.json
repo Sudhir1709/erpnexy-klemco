@@ -1,0 +1,234 @@
+{
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "module": "Customer Service",
+ "name": "Sales Enquiry",
+ "issingle": 0,
+ "naming_rule": "By \"Naming Series\" field",
+ "autoname": "naming_series:",
+ "title_field": "project_name",
+ "track_changes": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "field_order": [
+  "naming_series",
+  "enquiry_details_section",
+  "raised_by",
+  "employee_email",
+  "enquiry_date",
+  "col_break_1",
+  "zone",
+  "sales_person",
+  "enquiry_from",
+  "customer_project_section",
+  "customer",
+  "party_name",
+  "project_name",
+  "project_location",
+  "col_break_2",
+  "address_quotation_to",
+  "type_of_enquiry",
+  "review_section",
+  "review_feedback",
+  "status",
+  "quotation_section",
+  "quotation",
+  "quotation_value",
+  "col_break_3",
+  "quotation_date",
+  "close_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Series",
+   "label": "Series",
+   "options": "ENQ-.YYYY.-",
+   "default": "ENQ-.YYYY.-",
+   "reqd": 0
+  },
+  {
+   "fieldname": "enquiry_details_section",
+   "fieldtype": "Section Break",
+   "label": "Enquiry Details"
+  },
+  {
+   "fieldname": "raised_by",
+   "fieldtype": "Link",
+   "label": "Employee ID (Raised By)",
+   "options": "User",
+   "default": "__user",
+   "in_list_view": 1,
+   "description": "The salesperson logging this enquiry. Defaults to the logged-in user."
+  },
+  {
+   "fieldname": "employee_email",
+   "fieldtype": "Data",
+   "label": "Employee Email",
+   "options": "Email",
+   "fetch_from": "raised_by.email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "enquiry_date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "default": "Today",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "col_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "zone",
+   "fieldtype": "Data",
+   "label": "Zone",
+   "description": "Sales zone/office. Auto-filled from the raiser's Sales Office; editable."
+  },
+  {
+   "fieldname": "sales_person",
+   "fieldtype": "Link",
+   "label": "Sales Person in-charge",
+   "options": "Sales Person"
+  },
+  {
+   "fieldname": "enquiry_from",
+   "fieldtype": "Data",
+   "label": "Enquiry From",
+   "description": "Where the enquiry came from (source)."
+  },
+  {
+   "fieldname": "customer_project_section",
+   "fieldtype": "Section Break",
+   "label": "Customer & Project"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer (existing)",
+   "options": "Customer",
+   "in_list_view": 1,
+   "description": "Link an existing customer, OR leave blank and enter a prospect name below for a new party."
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Prospect Name (new)",
+   "description": "For a party not yet in the system. Fill this OR the Customer above."
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "project_location",
+   "fieldtype": "Small Text",
+   "label": "Project Location"
+  },
+  {
+   "fieldname": "col_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "address_quotation_to",
+   "fieldtype": "Data",
+   "label": "Whom to Address Quotation"
+  },
+  {
+   "fieldname": "type_of_enquiry",
+   "fieldtype": "Select",
+   "label": "Type of Enquiry",
+   "options": "\nTrading\nDesigning\nTrading + Designing\nSITC",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Review"
+  },
+  {
+   "fieldname": "review_feedback",
+   "fieldtype": "Small Text",
+   "label": "Review Feedback"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nQuotation Created\nConverted\nClosed — Lost",
+   "default": "Open",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "quotation_section",
+   "fieldtype": "Section Break",
+   "label": "Quotation"
+  },
+  {
+   "fieldname": "quotation",
+   "fieldtype": "Link",
+   "label": "Quotation Number",
+   "options": "Quotation",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Set automatically when a Quotation is created from this enquiry."
+  },
+  {
+   "fieldname": "quotation_value",
+   "fieldtype": "Currency",
+   "label": "Quotation Value (INR)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quotation_date",
+   "fieldtype": "Date",
+   "label": "Date of Quotation Submission",
+   "read_only": 1
+  },
+  {
+   "fieldname": "close_reason",
+   "fieldtype": "Small Text",
+   "label": "Close Reason",
+   "depends_on": "eval:doc.status=='Closed — Lost'"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "share": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "CS Manager",
+   "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "share": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "CS Supervisor",
+   "read": 1, "write": 1, "create": 1, "print": 1, "share": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "CS Executive",
+   "read": 1, "write": 1, "create": 1, "print": 1, "share": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1, "write": 1, "create": 1, "print": 1, "share": 1, "report": 1, "export": 1
+  },
+  {
+   "role": "Sales User",
+   "read": 1, "write": 1, "create": 1, "report": 1, "export": 1
+  }
+ ]
+}

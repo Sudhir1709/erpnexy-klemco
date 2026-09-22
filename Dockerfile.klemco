@@ -5,8 +5,11 @@
 # Then set CUSTOM_IMAGE=erpnxt-klemco-cs and CUSTOM_TAG=v16.14.0 in .env and
 # `docker compose ... up -d` (see KLEMCO_SETUP.md).
 #
-# klemco_cs ships only server code + doctype_js form scripts (served directly),
-# so no `bench build` asset step is required.
+# The AI assistant adds a desk-wide JS bundle (the floating chat bubble), so we
+# run `bench build --app klemco_cs` here. Building the app INTO the image is what
+# makes the frontend serve the bundle (the asset symlink target then exists) and
+# the build manifest include it — a runtime-only app can't do this. node ships in
+# the base image under ~/.nvm, so we put it on PATH for the build.
 ARG ERPNEXT_VERSION=v16.14.0
 FROM frappe/erpnext:${ERPNEXT_VERSION}
 
@@ -16,4 +19,10 @@ COPY --chown=frappe:frappe resources/klemco_db_grant.py /home/frappe/frappe-benc
 
 USER frappe
 RUN cd /home/frappe/frappe-bench \
- && ./env/bin/pip install --no-cache-dir -e apps/klemco_cs
+ && ./env/bin/pip install --no-cache-dir -e apps/klemco_cs \
+ && printf '\nklemco_cs\n' >> sites/apps.txt \
+ && awk 'NF && !seen[$0]++' sites/apps.txt > sites/apps.txt.tmp \
+ && mv sites/apps.txt.tmp sites/apps.txt
+RUN cd /home/frappe/frappe-bench \
+ && export PATH="$(ls -d /home/frappe/.nvm/versions/node/*/bin | head -1):$PATH" \
+ && bench build --app klemco_cs

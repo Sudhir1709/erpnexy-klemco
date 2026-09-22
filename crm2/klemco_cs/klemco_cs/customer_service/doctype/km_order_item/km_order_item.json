@@ -8,6 +8,17 @@
  "creation": "2026-05-01 00:00:00",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "delivery_date",
+  "so_qty",
+  "km_qty",
+  "uom",
+  "cs_plant_date_status",
+  "cs_available_date",
+  "matches_so"
+ ],
  "fields": [
   {
    "fieldname": "item_code",
@@ -16,7 +27,7 @@
    "options": "Item",
    "reqd": 1,
    "in_list_view": 1,
-   "columns": 3
+   "columns": 2
   },
   {
    "fieldname": "item_name",
@@ -24,8 +35,15 @@
    "label": "Item Name",
    "fetch_from": "item_code.item_name",
    "read_only": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date",
+   "description": "Required delivery date for this line (from the Sales Order line). Plan production against this.",
    "in_list_view": 1,
-   "columns": 3
+   "columns": 2
   },
   {
    "fieldname": "so_qty",
@@ -52,11 +70,29 @@
    "columns": 1
   },
   {
+   "fieldname": "cs_plant_date_status",
+   "fieldtype": "Select",
+   "label": "Plant Response",
+   "options": "\nAccepted\nNew Date Proposed",
+   "description": "Plant accepts the requested Delivery Date, or proposes a new Available Date for this line.",
+   "in_list_view": 1,
+   "columns": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "cs_available_date",
+   "fieldtype": "Date",
+   "label": "Available Date (Plant)",
+   "description": "Plant's proposed availability / delivery date for this line (item level).",
+   "in_list_view": 1,
+   "columns": 1,
+   "allow_on_submit": 1
+  },
+  {
    "fieldname": "matches_so",
    "fieldtype": "Check",
    "label": "Matches SO",
    "read_only": 1,
-   "in_list_view": 1,
    "columns": 1
   }
  ],

@@ -4,6 +4,11 @@
  "module": "Customer Service",
  "name": "CS Complaint Category Map",
  "issingle": 0,
+ "field_order": [
+  "complaint_type",
+  "assigned_department",
+  "sla_hours"
+ ],
  "fields": [
   {
    "fieldname": "complaint_type",

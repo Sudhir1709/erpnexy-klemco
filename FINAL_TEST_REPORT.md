@@ -1,158 +1,73 @@
-# Klemco CRM — Customer Service Module · FINAL TEST REPORT
+# Klemco CS — End-to-End Test Report
 
-| | |
-|---|---|
-| **Report date** | 2026-06-01 |
-| **Application** | `klemco_cs` v1.3 on ERPNext v16.14.0 / Frappe v16.16.0 |
-| **Companion apps on stack** | india_compliance, hrms, crm |
-| **Environment** | `http://localhost:8080` · site `mysite.localhost` |
-| **Reference spec** | CRM_CS_BRD_PRD v1.3 (CR-09…CR-18 + FR-/BR-) |
-| **Prepared by** | QA (automated + scripted execution) |
-| **Status** | **PASS** — recommended for go-live subject to §7 open items |
+**Application:** `klemco_cs` (Customer Service + order-execution layer on ERPNext v16, with India Compliance/GST)
+**Date:** 21 Jul 2026
+**Environment:** site `mysite.localhost`, company **Klemco India** (GSTIN `03…` → Punjab plant), served at `http://localhost:8080` (`frappe_docker-backend-1`); mirror stack on `:8081`.
+**Method:** 4 autonomous agents run in tandem, each driving the real desk forms (Playwright) plus authoritative `bench console` reproductions; container app code confirmed byte-identical (md5) to the repo. All test records were rolled back / deleted — no orphans left behind.
 
 ---
 
-## 1. Executive Summary
+## 1. Result at a glance
 
-The CS Module v1.3 was tested end-to-end across six phases plus UAT and a final outstanding-items
-round. **~155 automated/scripted checks executed; 0 application-logic defects.** Eight issues were
-found and resolved (robustness, deploy-config, UI delivery, and one environment fix); four items
-remain open and are non-blocking, requiring external resources (load infra, GST credentials,
-frontend image rebuild).
-
-| Phase | Coverage | Result |
-|---|---|---|
-| 1 — Automated server suite | Unit/integration of every v1.3 FR/BR | **58 / 58** |
-| UAT — all 5 modules | Persona acceptance scenarios | **17 / 17** |
-| 2 — E2E + GST chain | SO → Challan → GST Invoice → trail; RC approval; KM order | **6 / 6** |
-| 3 — RBAC + notifications | Role×action matrix; approval/submission gates | **48 / 48** |
-| 4 — UI / client-script | Playwright render (8/8) + interactive (6/7) + 25-case manual checklist | **14 / 15 automated** |
-| 5 — NFR + security (smoke) | Latency, RBAC at ORM, unauth, audit | **12 / 12** |
-| Outstanding | Load smoke, e-waybill boundary, interactive UI | **PASS** (see §6) |
-| OE native + CRM | Credit-limit hold, FIFO allocation config, Frappe CRM Lead→Deal | **4 / 4** |
-
-**Verdict:** All functional requirements and business-rule gates behave as specified. Submission
-and approval rights are correctly separated per role. Performance and security smoke targets are
-met with margin.
-
----
-
-## 2. Scope
-
-**In scope:** `klemco_cs` customizations on Sales Order, Delivery Note, Sales Invoice, Item; the
-KM Order doctype; CS Complaint module; cross-document flows (SO→Delivery Challan→Invoice→POD,
-SO→KM Order); business-rule/approval gates; RBAC; notifications; NFR & security smoke; UI render
-and interactive behavior. **Order Execution native rules** (credit-limit hold, FIFO allocation)
-and a **Frappe CRM** smoke (Lead→Deal) were added in a follow-up round (§5a).
-
-**Out of scope / external:** live third-party integrations (NIC e-waybill, SMS gateway, 3PL
-tracking); full load/scale test; TLS/SSO/MFA infrastructure; the **HRMS** app.
-
----
-
-## 3. Requirements Coverage (v1.3)
-
-| Item | Requirement | Verified by |
-|---|---|---|
-| CR-09 / FR-SO-16 | Required Delivery Date not back-dated | Phase 1, UAT, Phase 4 |
-| CR-10 / FR-SO-06 / BR-SO-01 | RC discount = Conditional Deviation → Sales Head approval | Phase 1/2/3/4 |
-| CR-11 / FR-KM-08 | Create KM Order from SO with qty review | Phase 1/2/4, UAT |
-| CR-12 | Single "Delivery Challan" artefact + print | Phase 4 (print output) |
-| CR-13 / FR-DP-11 / BR-DP-06 | COD cheque capture + gate | Phase 1/3, UAT |
-| CR-14 / FR-SO-04 | Preferred 3PL "Others" + note | Phase 1/4, UAT |
-| CR-15 / FR-DP-12 | Warehouse downloads SO test certificates | Phase 1, UAT |
-| CR-16 | Delivery instructions on the Challan | Phase 1/2/4 (carried to real DN + print) |
-| CR-17 / FR-SO-09 | Simplified acknowledgement (no delivery date) | Phase 1/3 |
-| CR-18 / BR-KM-02 | KM item triple approval (+ Supply Chain) | Phase 1/3 (per-role gate) |
-| BR-KM-01 | KM Order must link a parent SO | Phase 1, UAT |
-| FR-CM-11 / BR-CM-05/06, FR-8-02/8-08 | Complaint routing/SLA/escalation/override/CSAT | Phase 1/3/4, UAT |
-| §11 RBAC matrix | Role × action allow/deny | Phase 3 |
-| §9 NFR | Latency / security smoke | Phase 5 |
-
-All v1.3 items covered. The notification matrix (§x.8), initially unimplemented, was built and tested.
-
----
-
-## 4. Defect & Fix Register
-
-| ID | Severity | Finding | Status |
+| Test agent | Scope | Scenarios | Result |
 |---|---|---|---|
-| D1 | P3 | KM Order / CS Complaint lacked `naming_series` default → code-created docs crashed on insert | **Fixed** (PR #6) |
-| D2 | P2 | `server_script_enabled` was OFF → `CS SO Discount Check` server script blocked **all** Sales Order saves | **Fixed** — enabled + persisted in deploy config (PR #9, #12) |
-| D3 | P3 | BRD notification matrix unimplemented (only SO ack existed) | **Fixed** — complaint-logged/escalated/CSAT + dispatch notifications added (PR #12) |
-| D4 | P2 | Site DB user pinned to a container IP → "Access denied" after restarts | **Fixed** — self-healing grant on startup (PR #4) |
-| D5 | P3 | Native doctype client scripts (CS Complaint, KM Order) didn't load (app JS bundle unbuildable — no node in backend image) | **Fixed** — delivered via `doctype_js` hooks (PR #14) |
-| D6 | P3 | `custom_3pl_note` `depends_on` used a parenthesised literal → "Invalid depends_on expression" when 3PL=Others | **Fixed** — removed; client+server enforce (PR #14) |
-| D7 | P4 | Complaint auto-suggest matched an em-dash literal (fragile to JS asset encoding) | **Fixed** — ASCII-keyword match (PR #14) |
-| D8 | P2 (env, 8080) | Frontend image lacks runtime-added apps → asset 404s → `gst_settings` not loaded → SO form scripts abort | **Mitigated** — assets dereferenced into shared volume; recommend frontend image rebuild |
-| O1 | P3 (obs) | `CS Executive` role alone lacks Sales Order **create** perm (§11 lists it) — mitigated by users also holding Sales User | Open (decision) |
+| 1 | Complaints & KM Orders | 11 | **11 / 11 PASS** |
+| 2 | Order-to-cash core (SO → DN → SI, gates, GST, proforma) | 10 | 8 PASS + **2 bugs** |
+| 3 | Fulfillment, config & navigation | 10 | 9 PASS + **1 bug** |
+| 4 | User-guide authoring | — | Delivered (14 screenshots) |
 
-**No application-logic defects** were found in klemco_cs across all phases.
+**Total: 30 of 30 functional checks passed after fixes.** Three bugs were found; **all three are fixed, deployed to both sites, and verified.**
 
 ---
 
-## 5. Performance & Security (Phase 5, smoke)
+## 2. Bugs found & fixed
 
-| Metric | Target | Measured |
-|---|---|---|
-| Sales Order / Complaint list API (P95) | < 2 s | 20–62 ms |
-| Desk page (server response, P95) | < 2 s | ~1.7 s |
-| Order save (KM create+submit) | < 3 s | ~0.4 s |
-| Load smoke (40 concurrent, 800 reqs) | 0 err, P95 < 2 s | 0 err, P95 235 ms, 252 req/s |
-| Unauthenticated `/api/resource` | denied | 403 |
-| RBAC at ORM (Stock User creates KM Order) | denied | denied |
-| Audit trail on tracked doctype | ≥ 1 version | captured |
+### 🔴 HIGH — 4-digit HSN codes blocked every goods order (fixed)
+- **Symptom:** All 60 stock "goods" items carried **4-digit** HSN codes (`7326`, `3214`, `7318`, `7312`, `8302`). India Compliance rejects these at **Sales Order submit *and* Sales Invoice submit**: *"HSN/SAC must exist and should be 6 or 8 digits long."* → a real product order **could not be submitted**.
+- **Cause:** UAT-placeholder HSN data seeded earlier with 4-digit prefixes.
+- **Fix:** Remapped each to a valid **6-digit** code that exists in the India Compliance master — `7326→732690` (37 items), `3214→321490` (10), `7318→731829` (6), `7312→731210` (4), `8302→830241` (3). Zero short codes remain.
+- **Verified:** SO `SAL-ORD-2026-00014` submitted (IGST @18%) → Sales Invoice `SINV-26-00003` submitted (₹5,900). Order-to-cash chain now completes end-to-end.
+- ⚠ **Pre-go-live:** these are still **UAT placeholders** — confirm the exact 6/8-digit HSN/SAC per product with the tax team before go-live.
 
----
+### 🟠 MEDIUM — Discount Matrix not reachable from the workspace (fixed)
+- **Symptom:** The Discount Matrix (the master driving discount-approval caps) was only reachable by typing its URL; it was absent from the Customer Service left-nav.
+- **Cause:** The link was added to the module workspace file but never synced to the live **Workspace Sidebar** (a hand-built DB doc).
+- **Fix:** Added an idempotent `_ensure_cs_sidebar_links()` to `customizations.py` (runs on every migrate) that inserts a **Discount Matrix** link under the **Configuration** group. Now durable across migrates/rebuilds.
+- **Verified:** appears in the Customer Service sidebar → Configuration on both sites.
 
-## 5a. Order Execution Native Rules + CRM Smoke (`oe_crm_runner.py`, 4/4)
-
-| Check | Result |
-|---|---|
-| **Credit-limit hold** (BR-OE-02 / FR-4-02) — over-limit SO blocked; within-limit submits | ✅ |
-| **FIFO allocation** (BR-OE-03 / FR-4-03) — valuation FIFO + pick-by-FIFO + auto serial/batch bundle on outward | ✅ (config-verified) |
-| **Frappe CRM** — create CRM Lead | ✅ |
-| **Frappe CRM** — create CRM Deal (Lead→Deal lifecycle) | ✅ |
-
-> FIFO is confirmed by the active Stock Settings (the dynamic 2-batch pick needs the Serial/Batch
-> feature enabled, which is intentionally off on this stack). HRMS remains out of scope.
+### 🟡 LOW — UOM column not rendering in the Sales Order grid (fixed)
+- **Symptom:** `uom` was set `in_list_view=1`, but the items grid did not display a UOM column.
+- **Cause:** The grid renders only as many columns as fit a ~10-unit width budget; with 7 in-list fields at default widths, UOM was squeezed out. Per-user grid personalization on the test account also hid it.
+- **Fix:** Pinned explicit grid column widths (`item_code`=2, `delivery_date`=2, `cs_required_delivery_date`=2, `qty`/`uom`/`rate`/`amount`=1 → sum 10) via property setters, and cleared stale per-user grid settings so the corrected default renders.
+- **Verified:** all 7 columns incl. **UOM** fit within budget.
 
 ---
 
-## 6. Outstanding-Items Round
+## 3. What passed (highlights)
 
-- **Load:** PASS at moderate concurrency (smoke). Full 500-user test is recommended pre-go-live.
-- **e-waybill:** integration enabled, but no NIC/GSP API credentials → live generation not exercised.
-- **Interactive UI:** 6/7 (deviation buttons/banner, KM review grid, **Delivery Challan print**,
-  3PL note, tablet). Complaint live auto-suggest is functionally correct server-side; UI hint hardened.
+**Complaints & KM (11/11):** blank-SO complaint save · assignment → ToDo sync + reassign (old ToDo cancelled) · complaint-type auto-routing (Quality→QC Head, Billing→Finance Lead) · escalation workflow · editable Share dialog (`share` perm) · dual attachments · CS Complaint Workflow (7 states/13 transitions) · Category Mapping · standalone KM Order · KM Order auto-fill from a linked SO · SO → "Create KM Order" mapper.
 
----
+**Order-to-cash (8/10, gates all green):**
+- **Auto-GST:** Maharashtra customer → Out-State **IGST 18%**; Punjab customer → In-State **CGST 9% + SGST 9%**; RCM templates disabled (unselectable), so no tax-netting-to-zero.
+- **Discount Matrix gate:** 30% line → auto-flag *"Discount Approval — Sales Head"*, submit blocked; **Approve/Reject Discount** buttons (Sales Head/Manager) clear it; changing the cap live re-derives the gate; ≤cap → *Not Required*.
+- **Credit hold:** order over limit → *On Hold*, submit blocked; Finance **Release Credit Hold** clears it (releaser recorded).
+- **so_required:** standalone invoice blocked (*"Sales Order is mandatory"*); invoice from an SO submits.
+- **Proforma Invoice:** printable (HTTP 200, "PROFORMA INVOICE") from both Sales Order and Quotation; no accounting entry.
+- **Payment Terms Template:** enter only **Credit Days** → saves (portion auto 100%, basis auto-filled).
 
-## 7. Open Items (non-blocking, external)
-
-1. **Full load test** for the §9 *500 concurrent users* target (k6/Locust, scaled workers).
-2. **Live e-waybill** UAT against the NIC sandbox (requires the client's GSP credentials).
-3. **8080 frontend image rebuild** to include all installed apps (or standardise on the 8081
-   custom-image deployment, which is unaffected). 
-4. **Master data:** back-fill item HSN and customer GSTIN for full GST/e-waybill operation.
-5. **(Decision)** Grant CS roles explicit Sales Order permissions, or document the Sales User dependency (O1).
+**Fulfillment/config/nav (9/10):** SO → Delivery Note (dispatch fields `allow_on_submit`) → Sales Invoice (GST + freight line) all submit; Connections tab links DN + SI; dispatch fields hidden on the SO; Project/Address/Payment-Term inline-create permissions; `/klemco-guide` + `/ai-help` render for logged-in users and **301-redirect guests**; RCM disabled + forward-GST enabled.
 
 ---
 
-## 8. Test Assets (in repo)
-
-- **Plans/reports:** TEST_STRATEGY, TEST_REPORT, UAT_REPORT, E2E_REPORT, RBAC_REPORT,
-  PHASE4_REPORT, PHASE5_REPORT, OUTSTANDING_REPORT, UI_TEST_CHECKLIST, and this FINAL_TEST_REPORT.
-- **Automated suite:** `crm2/klemco_cs/klemco_cs/tests/` (58 tests) — `bench run-tests --app klemco_cs`.
-- **Scripted runners:** `uat_runner.py`, `e2e_runner.py`, `rbac_runner.py`, `phase5_runner.py`,
-  `loadtest.py`, `playwright_ui.py`, `playwright_ui2.py`, `ui_fixtures_setup.py`.
-- **Delivered via PRs #2–#14** on `main`.
+## 4. Non-defect notes for the team
+- **Voltas Ltd.** has a pre-existing ₹500 credit limit on Klemco India — any Voltas order lands *On Hold*. Use a customer with headroom (e.g. Godrej, ₹10M) for non-credit tests.
+- **Company must be "Klemco India"** (holds the GSTIN); "Klemco India (Demo)" has no GSTIN and won't auto-apply GST.
+- Customer delivery-state data used for GST is **sample data** — replace with real addresses/GSTINs pre-go-live.
+- Email automation sends from the single default outgoing account (`klemcotest@gmail.com`, per-site secret — configure separately on production; rotate the shared password).
 
 ---
 
-## 9. Sign-off Recommendation
-
-The CS Module v1.3 **meets its acceptance criteria** with no open application-logic defects and a
-regression-safe automated suite. **Recommended for go-live** once the §7 open items (load test,
-e-waybill credentials, 8080 frontend image) are addressed by the respective owners. A short
-business walkthrough of the UI checklist is advised for final UAT acceptance.
+## 5. Deliverables
+- **Team User Guide** (all modules, navigation, document dependencies, 14 live screenshots) — served on the ERP at **`/klemco-user-guide`** (login-gated; reachable over the public tunnel by anyone with an ERP login). Deployed to both sites and baked into the image.
+- **Sales Order Field Guide** — `/klemco-guide` (unchanged).
+- All fixes committed to `klemco_cs` and baked into the durable image.

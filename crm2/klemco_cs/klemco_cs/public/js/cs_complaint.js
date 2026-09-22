@@ -13,9 +13,14 @@ const SLA_HOURS = {Critical: 24, High: 48, Medium: 48, Low: 72};
 
 frappe.ui.form.on('CS Complaint', {
 
+    onload(frm) {
+        set_order_queries(frm);
+    },
+
     refresh(frm) {
         render_routing_table(frm);
         render_sla_banner(frm);
+        set_order_queries(frm);
 
         if (frm.is_new()) {
             frm.set_intro(
@@ -24,6 +29,14 @@ frappe.ui.form.on('CS Complaint', {
         if (frm.doc.status === 'Closed') {
             frm.set_intro('Complaint closed. CSAT survey has been triggered.', 'green');
         }
+    },
+
+    customer(frm) {
+        // Bug 4b: the Sales Order / Invoice dropdowns are scoped to the chosen customer,
+        // so clear any prior selection that belonged to a different customer.
+        if (frm.doc.linked_sales_order) frm.set_value('linked_sales_order', null);
+        if (frm.doc.linked_invoice) frm.set_value('linked_invoice', null);
+        set_order_queries(frm);
     },
 
     complaint_type(frm) {
@@ -36,17 +49,27 @@ frappe.ui.form.on('CS Complaint', {
     },
 
     assigned_to(frm) {
+        // The algorithm suggestion is advisory only — surface it as a hint but never
+        // block saving with a mandatory Override Reason (UAT 01-Jul).
         if (frm.doc.algorithm_suggested && frm.doc.assigned_to
                 && !frm.doc.assigned_to.includes(frm.doc.algorithm_suggested)) {
-            frm.set_df_property('override_reason', 'reqd', 1);
             frm.set_df_property('override_reason', 'description',
-                'You are overriding the algorithm suggestion. Provide a reason (BR-CM06).');
+                'This differs from the suggested assignee (' + frm.doc.algorithm_suggested + '). A reason is optional.');
         } else {
-            frm.set_df_property('override_reason', 'reqd', 0);
             frm.set_df_property('override_reason', 'description', '');
         }
     }
 });
+
+// Bug 4b — filter the linked Sales Order / Invoice pickers to the selected customer.
+function set_order_queries(frm) {
+    frm.set_query('linked_sales_order', () => ({
+        filters: frm.doc.customer ? { customer: frm.doc.customer } : {},
+    }));
+    frm.set_query('linked_invoice', () => ({
+        filters: frm.doc.customer ? { customer: frm.doc.customer } : {},
+    }));
+}
 
 // Match on ASCII keywords (not the em-dash literal) so it is immune to JS-asset
 // character-encoding differences when the static file is served.

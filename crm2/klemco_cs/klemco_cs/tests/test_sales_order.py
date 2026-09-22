@@ -126,3 +126,85 @@ class TestSalesOrderHookWiring(FrappeTestCase):
         self.assertIn("klemco_cs.events.sales_order.validate", events.get("validate", []))
         self.assertIn("klemco_cs.events.sales_order.before_submit", events.get("before_submit", []))
         self.assertIn("klemco_cs.events.sales_order.on_submit", events.get("on_submit", []))
+        self.assertIn("klemco_cs.events.sales_order.before_update_after_submit",
+                      events.get("before_update_after_submit", []))
+        self.assertIn("klemco_cs.events.sales_order.on_update_after_submit",
+                      events.get("on_update_after_submit", []))
+
+
+# ── Change of plant (source warehouse) on a submitted order ──
+def _plant_doc(rows, before_rows, set_wh="Amritsar Main Store - KI", before_set_wh=None):
+    """A submitted-order stand-in: items + the snapshot get_doc_before_save() returns."""
+    doc = frappe._dict(
+        name="SO-TEST", company="Klemco India", set_warehouse=set_wh, docstatus=1,
+        items=[frappe._dict(r) for r in rows], flags=frappe._dict(),
+    )
+    before = frappe._dict(set_warehouse=before_set_wh or set_wh, items=[frappe._dict(r) for r in before_rows])
+    doc.get_doc_before_save = lambda: before
+    doc.has_product_bundle = lambda item_code: item_code == "BUNDLE"
+    return doc
+
+
+def _row(name, wh, **kw):
+    base = dict(name=name, idx=1, item_code="KL-CA-001", warehouse=wh, qty=2, delivered_qty=0,
+                picked_qty=0, delivered_by_supplier=0)
+    base.update(kw)
+    return base
+
+
+class TestPlantChange(FrappeTestCase):
+    def test_detects_changed_rows_only(self):
+        doc = _plant_doc(
+            [_row("r1", "Thane Branch Store - KI"), _row("r2", "Amritsar Main Store - KI")],
+            [_row("r1", "Amritsar Main Store - KI"), _row("r2", "Amritsar Main Store - KI")],
+        )
+        changes = so._warehouse_changes(doc)
+        self.assertEqual([(c[0].name, c[1], c[2]) for c in changes],
+                         [("r1", "Amritsar Main Store - KI", "Thane Branch Store - KI")])
+
+    def test_no_snapshot_means_no_change(self):
+        doc = frappe._dict(items=[frappe._dict(_row("r1", "X"))])
+        self.assertEqual(so._warehouse_changes(doc), [])
+
+    def _run(self, doc):
+        with patch.object(so, "_validate_plant"), patch("frappe.db.get_value", return_value=None):
+            so.before_update_after_submit(doc)
+        return doc.flags.get("klemco_wh_changes")
+
+    def test_clean_change_passes_and_is_flagged(self):
+        doc = _plant_doc([_row("r1", "Thane Branch Store - KI")], [_row("r1", "Amritsar Main Store - KI")],
+                         set_wh="Thane Branch Store - KI", before_set_wh="Amritsar Main Store - KI")
+        self.assertEqual(self._run(doc), [("r1", "Amritsar Main Store - KI", "Thane Branch Store - KI")])
+
+    def test_delivered_row_blocked(self):
+        doc = _plant_doc([_row("r1", "Thane Branch Store - KI", delivered_qty=1)],
+                         [_row("r1", "Amritsar Main Store - KI", delivered_qty=1)])
+        self.assertRaises(frappe.ValidationError, self._run, doc)
+
+    def test_picked_row_blocked(self):
+        doc = _plant_doc([_row("r1", "Thane Branch Store - KI", picked_qty=2)],
+                         [_row("r1", "Amritsar Main Store - KI", picked_qty=2)])
+        self.assertRaises(frappe.ValidationError, self._run, doc)
+
+    def test_row_on_draft_delivery_note_blocked(self):
+        doc = _plant_doc([_row("r1", "Thane Branch Store - KI")], [_row("r1", "Amritsar Main Store - KI")])
+        with patch.object(so, "_validate_plant"), patch("frappe.db.get_value", return_value="MAT-DN-0001"):
+            self.assertRaises(frappe.ValidationError, so.before_update_after_submit, doc)
+
+    def test_bundle_row_blocked(self):
+        doc = _plant_doc([_row("r1", "Thane Branch Store - KI", item_code="BUNDLE")],
+                         [_row("r1", "Amritsar Main Store - KI", item_code="BUNDLE")])
+        self.assertRaises(frappe.ValidationError, self._run, doc)
+
+    def test_header_change_on_fully_delivered_order_blocked(self):
+        doc = _plant_doc([_row("r1", "Amritsar Main Store - KI", delivered_qty=2)],
+                         [_row("r1", "Amritsar Main Store - KI", delivered_qty=2)],
+                         set_wh="Thane Branch Store - KI", before_set_wh="Amritsar Main Store - KI")
+        self.assertRaises(frappe.ValidationError, self._run, doc)
+
+    def test_plant_must_be_a_real_non_group_warehouse_of_the_company(self):
+        self.assertRaises(frappe.ValidationError, so._validate_plant, "No Such Warehouse - XX", "Klemco India")
+        group = frappe.db.get_value("Warehouse", {"is_group": 1}, "name")
+        if group:
+            self.assertRaises(frappe.ValidationError, so._validate_plant, group,
+                              frappe.db.get_value("Warehouse", group, "company"))

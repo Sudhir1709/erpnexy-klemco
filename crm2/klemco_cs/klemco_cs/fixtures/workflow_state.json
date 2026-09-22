@@ -1,0 +1,65 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.290842",
+  "name": "Open",
+  "style": "Primary",
+  "workflow_state_name": "Open"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.474974",
+  "name": "Under Review",
+  "style": "Warning",
+  "workflow_state_name": "Under Review"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.477040",
+  "name": "Awaiting Customer Response",
+  "style": "Warning",
+  "workflow_state_name": "Awaiting Customer Response"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.479920",
+  "name": "Escalated",
+  "style": "Danger",
+  "workflow_state_name": "Escalated"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.481769",
+  "name": "Reverse Pickup Arranged",
+  "style": "Info",
+  "workflow_state_name": "Reverse Pickup Arranged"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.483719",
+  "name": "Resolution Sent",
+  "style": "Success",
+  "workflow_state_name": "Resolution Sent"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2026-04-25 02:01:30.484917",
+  "name": "Closed",
+  "style": "",
+  "workflow_state_name": "Closed"
+ }
+]

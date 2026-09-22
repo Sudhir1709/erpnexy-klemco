@@ -148,7 +148,7 @@ def _system_prompt():
         "You are the Klemco CRM Assistant, embedded in an ERPNext/Frappe CRM. "
         "Help users two ways: (1) answer how-to and process questions about using the CRM "
         "(leads, deals, customers, quotations, sales orders, invoices, deliveries, customer-service "
-        "complaints, KM orders); (2) answer questions about their live data by calling the provided tools. "
+        "complaints, plant orders); (2) answer questions about their live data by calling the provided tools. "
         "Always use a tool for data questions (counts, lists, status) rather than guessing. "
         "The tools already enforce the user's permissions, so only report what they return. "
         f"Available data doctypes: {', '.join(sorted(ALLOWED_DOCTYPES))}. "
@@ -300,6 +300,32 @@ def confirm_create(doctype, values):
         pass
     frappe.db.commit()
     return {"created": True, "doctype": doctype, "name": doc.name}
+
+
+def install_widget_bundle():
+    """Publish the floating-bubble JS as a desk bundle WITHOUT a Node build. The script is
+    plain browser-ready JS (no transpile), so we copy it into the assets dist folder and
+    register it in assets.json under 'klemco_cs.bundle.js' (the name used in app_include_js).
+    Idempotent; runs on every migrate so it survives asset refreshes."""
+    import os
+    import shutil
+    try:
+        src = frappe.get_app_path("klemco_cs", "public", "js", "ai_widget.js")
+        assets = os.path.join(frappe.utils.get_bench_path(), "sites", "assets")
+        dist = os.path.join(assets, "klemco_cs", "dist", "js")
+        os.makedirs(dist, exist_ok=True)
+        shutil.copyfile(src, os.path.join(dist, "klemco_cs.bundle.js"))
+        manifest = os.path.join(assets, "assets.json")
+        try:
+            with open(manifest) as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+        data["klemco_cs.bundle.js"] = "/assets/klemco_cs/dist/js/klemco_cs.bundle.js"
+        with open(manifest, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco AI: install_widget_bundle")
 
 
 def install_menu():

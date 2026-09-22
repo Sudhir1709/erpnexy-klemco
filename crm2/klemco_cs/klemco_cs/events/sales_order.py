@@ -3,32 +3,330 @@
 #   CR-14 / FR-SO-04  Preferred 3PL "Others (not yet decided)" needs a note
 #   CR-10 / FR-SO-06  RC discount = Conditional Deviation -> Sales Head approval gate
 #   CR-17 / FR-SO-09  Simplified acknowledgement email (no delivery date)
+#   FR-5-02           Auto-GST: default the Tax Category from plant vs delivery state
+#   BR-OE-01          Discount Matrix: max line discount by customer type / item group
+#   BR-OE-02          Credit hold — block submission on hold; Finance release action
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate, formatdate
+from frappe.utils import getdate, nowdate, formatdate, flt, fmt_money
 
 OTHERS_3PL = "Others (not yet decided)"
 RC_TYPE = "RC (Rate Contract)"
+FINANCE_ROLES = {"Accounts Manager", "System Manager"}
+
+
+def before_validate(doc, method=None):
+    # Safety net over India Compliance: if the tax category is still blank, derive
+    # In-State / Out-State from the dispatch (plant) state vs the delivery state and
+    # apply the matching GST template. Runs before validate so IC computes the amounts.
+    _auto_gst_tax_category(doc)
+    # BR-OE-01: set the discount threshold from the Discount Matrix for this customer type,
+    # so the existing gate (Server Script + client) checks against the configured maximum.
+    _apply_discount_matrix(doc)
+    # Optional Packaging & Forwarding charge (before tax, GST-inclusive) — after GST rows exist.
+    from klemco_cs.events.pf import reconcile_pf
+    reconcile_pf(doc)
 
 
 def validate(doc, method=None):
     _validate_delivery_dates(doc)
     _validate_3pl(doc)
-    _flag_rc_deviation(doc)
+    _flag_discount_approval(doc)
+    _check_credit_hold(doc)
 
 
 def before_submit(doc, method=None):
-    # BR-SO-01: an RC discount deviation cannot be submitted until the Sales Head approves.
-    if doc.get("custom_rc_deviation") and doc.get("custom_deviation_approval_status") != "Approved":
+    # BR-OE-01: an over-cap discount must be Approved (by Sales Head / Sales Manager) before submit.
+    # (RC customers are covered by this single gate — the separate RC "Deviation" gate was retired.)
+    status = doc.get("cs_discount_approval_status")
+    if status == "Discount Approval — Sales Head":
         frappe.throw(_(
-            "This order applies a discount on a Rate Contract customer and is flagged as a "
-            "Conditional Deviation. It needs Sales Head approval before submission (BR-SO-01 / FR-SO-06)."
+            "This order is <b>pending Sales-Head approval</b> for its discount and cannot be "
+            "submitted yet (BR-OE-01)."
         ))
+    if status == "Rejected":
+        frappe.throw(_(
+            "The discount on this order was <b>Rejected</b>. Revise the discount within the allowed "
+            "limit (or get it approved) before submitting (BR-OE-01)."
+        ))
+    # BR-OE-02: an order on credit hold cannot be submitted until Finance releases it.
+    if doc.get("cs_credit_hold_status") == "On Hold":
+        frappe.throw(_(
+            "This order is on <b>Credit Hold</b>. {0} Finance must release it before it can be "
+            "submitted (BR-OE-02)."
+        ).format(doc.get("cs_credit_hold_reason") or ""))
+
+
+# ── BR-OE-01  Discount Matrix ─────────────────────────────────────────────────
+def _doc_customer(doc):
+    """The customer of a Sales Order (customer) or a Quotation (party_name when quotation_to=Customer)."""
+    if doc.get("customer"):
+        return doc.get("customer")
+    if doc.get("quotation_to") == "Customer" and doc.get("party_name"):
+        return doc.get("party_name")
+    return None
+
+
+def _customer_type(doc):
+    cust = _doc_customer(doc)
+    return (cust and frappe.db.get_value("Customer", cust, "custom_klemco_customer_type")) or "Regular"
+
+
+DISCOUNT_APPROVERS = {"Sales Head", "Sales Manager", "System Manager"}
+_PENDING = "Discount Approval — Sales Head"
+
+
+def _apply_discount_matrix(doc):
+    """Set cs_discount_threshold from the Discount Matrix for this customer type so the
+    order shows the configured maximum. Enforcement is via _flag_discount_approval +
+    before_submit (the blocking CS Sales Order Workflow is retired in favour of this
+    field-based approval, mirroring the RC-deviation flow)."""
+    try:
+        if not _doc_customer(doc):
+            return
+        from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
+        general = get_max_discount(_customer_type(doc), None)
+        if general is not None:
+            doc.cs_discount_threshold = general
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount matrix threshold failed")
+
+
+def _flag_discount_approval(doc):
+    """Auto-flag the order for Sales-Head approval when a line discount exceeds the matrix
+    cap. The order still SAVES (draft); submission is blocked until it's Approved. Explicit
+    Approved / Rejected decisions are preserved (only cleared when the discount is brought
+    back within the cap)."""
+    try:
+        status = doc.get("cs_discount_approval_status")
+        if _lines_exceeding_matrix(doc):
+            if status not in ("Approved", "Rejected"):
+                doc.cs_discount_approval_status = _PENDING
+        else:
+            # within the cap now — clear any auto/pending flag
+            if status in (None, "", _PENDING):
+                doc.cs_discount_approval_status = "Not Required"
+                doc.cs_discount_approved_by = None
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount approval flag failed")
+
+
+@frappe.whitelist()
+def set_discount_decision(sales_order, decision):
+    """Sales Head / Sales Manager approves or rejects an over-cap discount (BR-OE-01)."""
+    if decision not in ("Approved", "Rejected"):
+        frappe.throw(_("Invalid decision."))
+    if not (DISCOUNT_APPROVERS & set(frappe.get_roles())):
+        frappe.throw(_("Only a Sales Head or Sales Manager can approve/reject a discount."))
+
+    doc = frappe.get_doc("Sales Order", sales_order)
+    if doc.get("cs_discount_approval_status") != _PENDING:
+        frappe.throw(_("This order is not pending discount approval."))
+
+    doc.db_set("cs_discount_approval_status", decision)
+    doc.db_set("cs_discount_approved_by", frappe.session.user)
+    if doc.meta.has_field("cs_discount_approval_time"):
+        doc.db_set("cs_discount_approval_time", frappe.utils.now_datetime())
+    doc.add_comment("Comment", _("Discount {0} by {1}.").format(decision, frappe.session.user))
+    from klemco_cs.notifications import notify_decision
+    notify_decision(doc.name, "discount", decision, frappe.session.user)
+    return decision
+
+
+def _approved_quotation_line_discount(row):
+    """The discount % already approved on the SO line's source quotation line, else None. Only when
+    that quotation's discount was Approved (or Not Required — it never needed approval). Lets an SO
+    inherit the quote's sign-off, so re-approval is needed only when a line's discount is raised
+    ABOVE what was quoted (BR-OE-01)."""
+    q, qi = row.get("prevdoc_docname"), row.get("quotation_item")
+    if not q or not qi:
+        return None
+    if frappe.db.get_value("Quotation", q, "cs_discount_approval_status") not in ("Approved", "Not Required"):
+        return None
+    d = frappe.db.get_value("Quotation Item", qi, "discount_percentage")
+    return flt(d) if d is not None else None
+
+
+def _lines_exceeding_matrix(doc):
+    """Item codes whose line discount exceeds their (customer-type, item-group) cap — but a line that
+    is within the already-approved discount from its source quotation line is not counted (no
+    re-approval for the same/lower discount; only an increment above the quote triggers approval)."""
+    try:
+        if not _doc_customer(doc):
+            return []
+        from klemco_cs.customer_service.doctype.cs_discount_matrix.cs_discount_matrix import get_max_discount
+        ctype = _customer_type(doc)
+        general = get_max_discount(ctype, None)
+        over = []
+        for row in doc.get("items", []):
+            line_disc = flt(row.get("discount_percentage"))
+            if line_disc <= 0:
+                continue
+            ig = frappe.db.get_value("Item", row.item_code, "item_group") if row.item_code else None
+            cap = get_max_discount(ctype, ig)
+            if cap is None:
+                cap = general
+            # Inherit an already-approved discount from the source quotation line: raise the cap so the
+            # same (or lower) discount doesn't re-trigger approval.
+            approved = _approved_quotation_line_discount(row)
+            if approved is not None and approved > (cap or 0):
+                cap = approved
+            if cap is not None and line_disc > flt(cap) + 0.01:
+                over.append(row.item_code)
+        return over
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco discount matrix check failed")
+        return []
+
+
+# ── BR-OE-02  Credit hold detection ───────────────────────────────────────────
+def _check_credit_hold(doc):
+    """Put the order On Hold when outstanding + this order's value exceeds the customer's
+    credit limit for the company. A hold already set stays until Finance releases it."""
+    try:
+        if not (doc.get("customer") and doc.get("grand_total")):
+            return
+        limit = frappe.db.get_value(
+            "Customer Credit Limit",
+            {"parent": doc.customer, "company": doc.company},
+            "credit_limit",
+        )
+        if not limit:
+            return
+        outstanding = frappe.db.sql(
+            """SELECT IFNULL(SUM(outstanding_amount), 0) FROM `tabSales Invoice`
+               WHERE customer=%s AND company=%s AND docstatus=1 AND outstanding_amount > 0""",
+            (doc.customer, doc.company),
+        )[0][0] or 0
+        if flt(outstanding) + flt(doc.grand_total) > flt(limit):
+            doc.cs_credit_hold_status = "On Hold"
+            doc.cs_credit_hold_reason = _(
+                "Outstanding {0} + Order {1} exceeds credit limit {2}. Finance release required. (BR-OE-02)"
+            ).format(fmt_money(outstanding), fmt_money(doc.grand_total), fmt_money(limit))
+        elif doc.get("cs_credit_hold_status") != "On Hold":
+            doc.cs_credit_hold_status = "Clear"
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco credit-hold check failed")
+
+
+# ── BR-OE-02  Finance release of a credit hold ────────────────────────────────
+@frappe.whitelist()
+def release_credit_hold(sales_order):
+    """Finance clears a credit hold so the order can proceed. Roles: Accounts Manager / System Manager."""
+    if not (FINANCE_ROLES & set(frappe.get_roles())):
+        frappe.throw(_("Only Finance (Accounts Manager) can release a credit hold."))
+
+    doc = frappe.get_doc("Sales Order", sales_order)
+    if doc.get("cs_credit_hold_status") != "On Hold":
+        frappe.throw(_("This order is not on credit hold."))
+
+    doc.db_set("cs_credit_hold_status", "Clear")
+    doc.db_set("cs_credit_released_by", frappe.session.user)
+    doc.add_comment("Comment", _("Credit hold released by {0}.").format(frappe.session.user))
+    from klemco_cs.notifications import notify_decision
+    notify_decision(doc.name, "credit", "Released", frappe.session.user)
+    return "Clear"
 
 
 def on_submit(doc, method=None):
     _send_acknowledgement(doc)
+    _mark_source_quotations_accepted(doc)
+
+
+def _mark_source_quotations_accepted(doc):
+    """When a Sales Order is confirmed, mark the quotation(s) it was created from as 'Accepted'
+    (the Quotation conversion-status field). Best-effort; never blocks the submit."""
+    try:
+        quos = {i.get("prevdoc_docname") for i in (doc.get("items") or [])
+                if i.get("prevdoc_docname")}
+        for q in quos:
+            if frappe.db.exists("Quotation", q) and \
+                    frappe.db.get_value("Quotation", q, "cs_conversion_status") != "Accepted":
+                frappe.db.set_value("Quotation", q, "cs_conversion_status", "Accepted")
+            # If that quotation came from a Sales Enquiry, mark the enquiry Converted (won).
+            enq = frappe.db.get_value("Quotation", q, "cs_sales_enquiry")
+            if enq and frappe.db.exists("Sales Enquiry", enq) and \
+                    frappe.db.get_value("Sales Enquiry", enq, "status") != "Converted":
+                frappe.db.set_value("Sales Enquiry", enq, "status", "Converted")
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Klemco quotation auto-accept failed")
+
+
+# ── FR-5-02  Auto-GST tax category ────────────────────────────────────────────
+# India Compliance already auto-picks the tax when the company GSTIN (dispatch state)
+# and place of supply (delivery state) are known. This is a *safety net*: it only fills
+# a still-blank Tax Category, only for the plain In-State/Out-State case, and never
+# overrides a value already set by the user or by India Compliance.
+def _auto_gst_tax_category(doc):
+    try:
+        if doc.get("tax_category"):
+            return  # already chosen (manually or by India Compliance) — respect it
+
+        from_state = _dispatch_state(doc)
+        to_state = _delivery_state(doc)
+        if not from_state or not to_state:
+            return
+
+        category = "In-State" if from_state == to_state else "Out-State"
+        doc.tax_category = category
+
+        if not doc.get("taxes"):
+            template = frappe.db.get_value(
+                "Sales Taxes and Charges Template",
+                {"company": doc.company, "tax_category": category, "disabled": 0},
+                "name",
+            )
+            if template:
+                doc.taxes_and_charges = template
+                from erpnext.controllers.accounts_controller import get_taxes_and_charges
+                for tax in get_taxes_and_charges("Sales Taxes and Charges Template", template):
+                    doc.append("taxes", tax)
+    except Exception:
+        # Tax automation must never block a save; log and let the user pick manually.
+        frappe.log_error(frappe.get_traceback(), "Klemco SO auto-GST tax category failed")
+
+
+def _normalise_state(value):
+    """Accept a plain state name or India Compliance's 'NN-State' place-of-supply format."""
+    if not value:
+        return None
+    value = str(value).strip()
+    if len(value) > 3 and value[2] == "-" and value[:2].isdigit():
+        value = value[3:]
+    return value.lower()
+
+
+def _dispatch_state(doc):
+    # Prefer an explicit dispatch/plant address on the order, then the company GSTIN's
+    # state, then the company's default GST-registered address.
+    if doc.get("company_address"):
+        st = frappe.db.get_value("Address", doc.company_address, "gst_state")
+        if st:
+            return _normalise_state(st)
+    if doc.get("company_gstin"):
+        try:
+            from india_compliance.gst_india.utils import get_state
+            st = get_state(doc.company_gstin[:2])
+            if st:
+                return _normalise_state(st)
+        except Exception:
+            pass
+    addr = frappe.db.get_value(
+        "Address", {"is_your_company_address": 1, "gstin": ["!=", ""]}, ["gst_state"], as_dict=True
+    )
+    return _normalise_state(addr.gst_state) if addr else None
+
+
+def _delivery_state(doc):
+    if doc.get("place_of_supply"):
+        return _normalise_state(doc.place_of_supply)
+    for addr_field in ("shipping_address_name", "customer_address"):
+        if doc.get(addr_field):
+            st = frappe.db.get_value("Address", doc.get(addr_field), "gst_state")
+            if st:
+                return _normalise_state(st)
+    return None
 
 
 # ── CR-09 / FR-SO-16 ──────────────────────────────────────────────────────────
@@ -152,3 +450,157 @@ def _ack_recipients(doc):
             if email:
                 recipients.append(email)
     return recipients
+
+
+@frappe.whitelist()
+def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, child_docname="items"):
+    """Wraps ERPNext's 'Update Items' handler (via override_whitelisted_methods) to freeze a Sales
+    Order's item lines once it has been billed — no qty/rate/add/remove after invoicing. Any other
+    doctype (Purchase Order, etc.) passes straight through to the original."""
+    from erpnext.controllers.accounts_controller import update_child_qty_rate as _erp_update
+    if parent_doctype == "Sales Order" and flt(
+        frappe.db.get_value("Sales Order", parent_doctype_name, "per_billed")
+    ) > 0:
+        frappe.throw(_("This Sales Order has been billed — its item lines are frozen and can't be changed."))
+    return _erp_update(parent_doctype, trans_items, parent_doctype_name, child_docname)
+
+
+# ── Change of plant (source warehouse) on a submitted order ─────────────────────────────────────
+# Sales Order.set_warehouse and Sales Order Item.warehouse are allow_on_submit (property setters in
+# customizations.py) so CS can move an undelivered order to another plant before the Delivery Note
+# exists — pick the warehouse, click Update. These hooks keep ERPNext's stock figures honest:
+#   * lines already delivered / picked / on a draft Delivery Note or Pick List, and product bundles,
+#     can't move (the Delivery Note is the place to change those);
+#   * Stock Reservation Entries are cancelled at the old plant and re-created at the new one
+#     (the app auto-reserves on submit — see _ensure_stock_allocation);
+#   * Bin.reserved_qty is recomputed for the old plant (ERPNext only recomputes the current one).
+# ERPNext's own before/on_update_after_submit run first; Frappe fills get_doc_before_save() on the
+# Update path and has already written the child rows when on_update_after_submit runs.
+
+def _doc_before_save(doc):
+    getter = getattr(doc, "get_doc_before_save", None)
+    return getter() if callable(getter) else None
+
+
+def _warehouse_changes(doc):
+    """[(row, old_warehouse, new_warehouse)] for item rows whose warehouse changed in this Update."""
+    before = _doc_before_save(doc)
+    if not before:
+        return []
+    old_rows = {r.name: r for r in (before.get("items") or [])}
+    changes = []
+    for row in doc.get("items") or []:
+        old = old_rows.get(row.name)
+        if old is None:
+            continue   # added by "Update Items" — takes the new set_warehouse by itself
+        if (old.get("warehouse") or "") != (row.get("warehouse") or ""):
+            changes.append((row, old.get("warehouse"), row.get("warehouse")))
+    return changes
+
+
+def _header_warehouse_changed(doc):
+    before = _doc_before_save(doc)
+    return bool(before) and (before.get("set_warehouse") or "") != (doc.get("set_warehouse") or "")
+
+
+def _validate_plant(warehouse, company):
+    """The new plant must be a real, enabled, non-group warehouse of this company."""
+    from erpnext.stock.utils import (
+        is_group_warehouse, validate_disabled_warehouse, validate_warehouse_company,
+    )
+    if not frappe.db.exists("Warehouse", warehouse):
+        frappe.throw(_("Warehouse {0} does not exist.").format(frappe.bold(warehouse)))
+    is_group_warehouse(warehouse)
+    validate_disabled_warehouse(warehouse)
+    validate_warehouse_company(warehouse, company)
+
+
+def before_update_after_submit(doc, method=None):
+    """Block a plant change on lines that already left (or are leaving) the old plant."""
+    changes = _warehouse_changes(doc)
+    header_changed = _header_warehouse_changed(doc)
+    if header_changed and not changes:
+        if not [r for r in doc.get("items") or [] if flt(r.qty) > flt(r.get("delivered_qty"))]:
+            frappe.throw(_("All lines of this order are already delivered — the plant can't be changed any more."))
+    if header_changed and doc.get("set_warehouse"):
+        _validate_plant(doc.set_warehouse, doc.company)
+
+    kept = []
+    for row, old_wh, new_wh in changes:
+        if row.get("delivered_by_supplier"):
+            continue
+        label = _("Row #{0} ({1})").format(row.idx, row.item_code)
+        if flt(row.get("delivered_qty")):
+            frappe.throw(_("{0} is already (partly) delivered — its plant can't change. Deliver the "
+                           "balance from the Delivery Note's warehouse instead.").format(label))
+        if flt(row.get("picked_qty")):
+            frappe.throw(_("{0} is already picked — its plant can't change.").format(label))
+        dn = frappe.db.get_value("Delivery Note Item", {"so_detail": row.name, "docstatus": ["<", 2]}, "parent")
+        if dn:
+            frappe.throw(_("{0} is already on Delivery Note {1} — change the warehouse on that "
+                           "Delivery Note instead.").format(label, frappe.bold(dn)))
+        pl = frappe.db.get_value("Pick List Item", {"sales_order_item": row.name, "docstatus": ["<", 2]}, "parent")
+        if pl:
+            frappe.throw(_("{0} is on Pick List {1} — cancel it before changing the plant.").format(label, frappe.bold(pl)))
+        if hasattr(doc, "has_product_bundle") and doc.has_product_bundle(row.item_code):
+            frappe.throw(_("{0} is a product bundle — its plant can't be changed after submit.").format(label))
+        if not new_wh:
+            frappe.throw(_("{0}: pick a warehouse (plant).").format(label))
+        _validate_plant(new_wh, doc.company)
+        kept.append((row.name, old_wh, new_wh))
+    doc.flags.klemco_wh_changes = kept
+
+
+def on_update_after_submit(doc, method=None):
+    """Move reservations and Bin figures along with the changed plant(s)."""
+    changes = doc.flags.get("klemco_wh_changes") or []
+    if not changes:
+        return
+    from erpnext.stock.doctype.stock_reservation_entry.stock_reservation_entry import (
+        get_stock_reservation_entries_for_voucher,
+    )
+    from erpnext.stock.stock_balance import get_reserved_qty, update_bin_qty
+
+    reservation_on = bool(doc.get("reserve_stock")) and bool(
+        frappe.db.get_single_value("Stock Settings", "enable_stock_reservation")
+    )
+
+    # 1. Release the old plant: cancel this row's reservations, recompute its Bin.reserved_qty.
+    for row_name, old_wh, _new_wh in changes:
+        row = doc.getone("items", {"name": row_name})
+        if row is None:
+            continue
+        sres = get_stock_reservation_entries_for_voucher(
+            "Sales Order", doc.name, voucher_detail_no=row.name, fields=["name"]
+        )
+        if sres:
+            doc.cancel_stock_reservation_entries(sre_list=[s.name for s in sres], notify=False)
+        if old_wh and frappe.db.exists("Bin", {"item_code": row.item_code, "warehouse": old_wh}):
+            update_bin_qty(row.item_code, old_wh, {"reserved_qty": get_reserved_qty(row.item_code, old_wh)})
+    # 2. Reserve (order-based) at the new plant.
+    doc.update_reserved_qty(so_item_rows=[c[0] for c in changes])
+
+    # 3. Re-create the stock reservation at the new plant (partial reservation allowed; ERPNext
+    #    reports "stock not available to reserve" itself when the plant is empty).
+    for row_name, old_wh, new_wh in changes:
+        row = doc.getone("items", {"name": row_name})
+        if row is None:
+            continue
+        reserved = 0.0
+        qty_to_reserve = flt(row.qty) - flt(row.get("delivered_qty"))
+        if (reservation_on and row.get("reserve_stock") and qty_to_reserve > 0
+                and frappe.get_cached_value("Item", row.item_code, "is_stock_item")):
+            doc.create_stock_reservation_entries(
+                items_details=[{"sales_order_item": row.name, "warehouse": new_wh, "qty_to_reserve": qty_to_reserve}],
+                notify=False,
+            )
+            reserved = flt(frappe.db.get_value("Sales Order Item", row.name, "stock_reserved_qty"))
+            row.stock_reserved_qty = reserved
+        if reserved:
+            msg = _("Row #{0} ({1}) moved from {2} to {3} — {4} {5} reserved at {3}.").format(
+                row.idx, row.item_code, old_wh or "-", new_wh, flt(reserved), row.get("stock_uom") or "")
+        else:
+            msg = _("Row #{0} ({1}) moved from {2} to {3} — nothing reserved at {3} yet (no stock "
+                    "there; reserve once stock arrives).").format(row.idx, row.item_code, old_wh or "-", new_wh)
+        frappe.msgprint(msg, alert=True, indicator="green" if reserved else "orange")
+        doc.add_comment("Comment", msg)
