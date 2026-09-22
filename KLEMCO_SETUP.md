@@ -145,6 +145,7 @@ stay applied across restarts and recreations.
 | Dispatch | Warehouse can download SO test certificates from the Delivery Note — FR-DP-12 |
 | Dispatch | Delivery instructions carried from SO onto the Delivery Challan — CR-16 |
 | Docs | Delivery Form / Note / Challan consolidated into one "Delivery Challan" print format — CR-12 |
+| Docs | Branded "Klemco Sales Order" print format is the Sales Order default (Print / PDF / Email); the stock "Enter Company Details" print-page prompt is suppressed |
 
 Roles auto-created on install/migrate: `CS Executive`, `CS Manager`, `CS Supervisor`,
 `Sales Head`, `KM Plant Head`, `Supply Chain Lead`.

@@ -110,9 +110,15 @@ doc_events = {
     },
 }
 
-# Freeze a billed Sales Order's item lines: wrap the "Update Items" handler to reject a Sales Order
-# with per_billed > 0 (other doctypes pass through to ERPNext's original).
+# Replacements for ERPNext whitelisted (API) methods.
 override_whitelisted_methods = {
+    # Freeze a billed Sales Order's item lines: wrap the "Update Items" handler to reject a Sales
+    # Order with per_billed > 0 (other doctypes pass through to ERPNext's original).
     'erpnext.controllers.accounts_controller.update_child_qty_rate':
         'klemco_cs.events.sales_order.update_child_qty_rate',
+    # Suppress ERPNext's "Enter Company Details" prompt on the print page (its print.js asks this
+    # method whether the Company lacks logo/phone/email and pops a dialog). Klemco prints use
+    # self-contained branded formats; company details live on the Company master (see printing.py).
+    'erpnext.controllers.accounts_controller.get_missing_company_details':
+        'klemco_cs.printing.get_missing_company_details',
 }

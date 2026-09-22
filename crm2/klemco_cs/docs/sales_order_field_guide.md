@@ -175,7 +175,7 @@ Stock features that ship with ERPNext. Most are optional.
 - **Commission** — pay an external **Sales Partner/agent** (`sales_partner`, `commission_rate`, `total_commission`). Blank if none.
 - **Sales Team** — split internal credit across your own salespeople (Sales Person + contribution %). Optional.
 - **Auto Repeat** — make the order recurring (`from/to date`, `auto_repeat`). For standing/subscription orders only.
-- **Print Settings** — printed-PDF cosmetics (letter head, print heading, language, group same items). Defaults fine.
+- **Print Settings** — printed-PDF cosmetics (letter head, print heading, language, group same items). Defaults fine. Printing (Print / PDF / Email attachment) always uses the branded **"Klemco Sales Order"** format automatically; that format carries its own header, so the Letter Head field has no effect on it.
 - **UTM Analytics** — marketing attribution (source/medium/campaign/content). Only if you track campaigns.
 - **Additional Info** — customer PO no./date; inter-company fields (used only for company-to-company orders).
 

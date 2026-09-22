@@ -679,6 +679,17 @@ PROPERTY_SETTERS = [
         "value": "Klemco Quotation",
         "property_type": "Data",
     },
+    {
+        # Sales Order prints the branded "Klemco Sales Order" layout by default (Print / PDF / Email
+        # attachment). Deliberately replaces ERPNext's install-time default "Sales Order with Item
+        # Image" — a stock format that makes ERPNext's print page pop the "Enter Company Details"
+        # prompt (see printing.py). make_property_setter deletes + recreates, so this one wins.
+        "doctype_or_field": "DocType",
+        "doctype": "Sales Order",
+        "property": "default_print_format",
+        "value": "Klemco Sales Order",
+        "property_type": "Data",
+    },
     # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
     # real category from the GSTIN on save — it stays Registered when a GSTIN is entered, and reverts
     # to Unregistered (India) / Overseas gracefully when there's none (no validation error).
@@ -1015,6 +1026,7 @@ PROPERTY_SETTERS = [
 
 
 DELIVERY_CHALLAN_PRINT_FORMAT = "Delivery Challan"
+KLEMCO_SALES_ORDER_PRINT_FORMAT = "Klemco Sales Order"
 
 
 def apply_customizations():
@@ -1040,6 +1052,7 @@ def apply_customizations():
     _ensure_proforma_print_formats()
     _ensure_klemco_tax_invoice()
     _ensure_quotation_print_format()
+    _ensure_sales_order_print_format()
     _apply_property_setters()
     _ensure_so_list_columns()
     _ensure_sitc_item()
@@ -2046,6 +2059,176 @@ def _ensure_quotation_print_format():
         "custom_format": 1,
         "print_format_type": "Jinja",
         "html": KLEMCO_QUOTATION_HTML,
+    }).insert(ignore_permissions=True)
+
+
+# ── Klemco Sales Order — branded, self-contained Sales Order print format ───────────────────────
+# Sibling of KLEMCO_QUOTATION_HTML: logo + company block (salesperson office address, GSTIN,
+# UDYAM/CIN), Bill To / Ship To, customer PO reference, items (HSN, qty, rate, amount, per-line
+# delivery date), taxes (incl. P&F + GST), grand/rounded total, amount in words, payment schedule,
+# the Delivery Instructions carried to the Challan, Terms & Conditions and a signature footer.
+# Jinja note: Frappe renders with DebugUndefined, so a bare {{ x }} on a field that doesn't exist
+# on this site (India-Compliance fields such as gst_hsn_code / company_gstin / Address.gstin on a
+# site without IC) prints the literal "{{ no such element }}" — every such field is guarded with
+# `or ""` / {% if %} below. Custom formats get no Letter Head prepended (verified), so this layout
+# is complete on its own and the Letter Head selector has no effect on it.
+KLEMCO_SALES_ORDER_HTML = """
+{%- set _company = frappe.get_doc("Company", doc.company) %}
+{%- set _oa = frappe.db.get_value("User", doc.owner, "cs_office_address") %}
+{%- set _oaddr = frappe.get_doc("Address", _oa) if _oa else None %}
+<div style="font-size:11px;color:#000;">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+    <tr>
+      <td style="width:60%;vertical-align:middle;">
+        {%- if _company.company_logo %}<img src="{{ _company.company_logo }}" style="max-height:64px;max-width:240px;">
+        {%- else %}<strong style="font-size:18px;letter-spacing:1px;">{{ _company.company_name }}</strong>{% endif %}
+      </td>
+      <td style="width:40%;vertical-align:top;text-align:right;">
+        <h2 style="margin:0;letter-spacing:2px;">SALES ORDER</h2>
+        <div><strong>{{ doc.name }}</strong></div>
+        <div>Date: {{ frappe.format(doc.transaction_date, {"fieldtype":"Date"}) }}</div>
+        {%- if doc.delivery_date %}<div>Delivery Date: {{ frappe.format(doc.delivery_date, {"fieldtype":"Date"}) }}</div>{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;" border="1" cellpadding="4">
+    <tr>
+      <td style="width:40%;vertical-align:top;">
+        <strong>{{ _company.company_name }}</strong><br>
+        {%- if _oaddr %}
+          {{ _oaddr.address_line1 or "" }}{% if _oaddr.address_line2 %}, {{ _oaddr.address_line2 }}{% endif %}<br>
+          {{ _oaddr.city or "" }}{% if _oaddr.gst_state or _oaddr.state %} , {{ _oaddr.gst_state or _oaddr.state }}{% endif %} {{ _oaddr.pincode or "" }}
+          <br>GSTIN/UIN: {{ _oaddr.gstin or doc.company_gstin or "" }}
+        {%- else %}
+          {{ (doc.company_address_display or "") | safe }}
+          <br>GSTIN/UIN: {{ doc.company_gstin or "" }}
+        {%- endif %}
+        <br>UDYAM: UDYAM-PB-01-0113236 &nbsp; CIN: U46620PB2025PTC064410
+        {%- if _company.phone_no %}<br>Phone: {{ _company.phone_no }}{% endif %}
+        {%- if _company.email %}<br>Email: {{ _company.email }}{% endif %}
+      </td>
+      <td style="width:30%;vertical-align:top;">
+        <strong>Bill To</strong><br>
+        {{ doc.customer_name or doc.customer }}<br>
+        {{ (doc.address_display or "") | safe }}
+        {%- if doc.billing_address_gstin %}<br>GSTIN: {{ doc.billing_address_gstin }}{% endif %}
+        {%- if doc.contact_display %}<br>Attn: {{ doc.contact_display }}{% if doc.contact_mobile %}, {{ doc.contact_mobile }}{% endif %}{% endif %}
+      </td>
+      <td style="width:30%;vertical-align:top;">
+        <strong>Ship To</strong><br>
+        {%- if doc.shipping_address %}{{ doc.shipping_address | safe }}{% else %}Same as billing address{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  {%- if doc.po_no or doc.po_date or doc.custom_preferred_3pl %}
+  <table style="width:100%;border-collapse:collapse;margin-top:4px;" border="1" cellpadding="4">
+    <tr>
+      {%- if doc.po_no %}<td><span style="color:#555;">Customer PO No.</span><br><strong>{{ doc.po_no }}</strong></td>{% endif %}
+      {%- if doc.po_date %}<td><span style="color:#555;">PO Date</span><br><strong>{{ frappe.format(doc.po_date, {"fieldtype":"Date"}) }}</strong></td>{% endif %}
+      {%- if doc.custom_preferred_3pl %}<td><span style="color:#555;">Preferred 3PL</span><br><strong>{{ doc.custom_preferred_3pl }}</strong>{% if doc.custom_3pl_note %}<br><span style="font-size:10px;">{{ doc.custom_3pl_note }}</span>{% endif %}</td>{% endif %}
+    </tr>
+  </table>
+  {%- endif %}
+
+  <table class="table table-bordered" style="font-size:11px;margin-top:4px;margin-bottom:2px;">
+    <thead><tr>
+      <th style="width:4%;">Sl</th>
+      <th>Description</th>
+      <th style="width:10%;">HSN/SAC</th>
+      <th class="text-right" style="width:11%;">Qty</th>
+      <th class="text-right" style="width:13%;">Rate</th>
+      <th class="text-right" style="width:14%;">Amount</th>
+      <th style="width:12%;">Delivery</th>
+    </tr></thead>
+    <tbody>
+    {%- for row in doc.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ row.item_name }}</strong>{% if row.description and row.description != row.item_name %}<br><span style="color:#555;">{{ row.description | striptags }}</span>{% endif %}</td>
+        <td>{{ row.gst_hsn_code or "" }}</td>
+        <td class="text-right">{{ row.qty }} {{ row.uom }}</td>
+        <td class="text-right">{{ frappe.format(row.rate, {"fieldtype":"Currency"}, doc=doc) }}</td>
+        <td class="text-right">{{ frappe.format(row.amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+        <td>{% if row.delivery_date %}{{ frappe.format(row.delivery_date, {"fieldtype":"Date"}) }}{% endif %}</td>
+      </tr>
+    {%- endfor %}
+    </tbody>
+  </table>
+
+  <table style="width:100%;font-size:11px;margin-bottom:4px;">
+    <tr><td style="text-align:right;">Net Total</td>
+        <td style="text-align:right;width:160px;">{{ frappe.format(doc.net_total, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+    {%- for t in doc.taxes %}{% if t.tax_amount %}
+    <tr><td style="text-align:right;">{{ t.description }}</td>
+        <td style="text-align:right;">{{ frappe.format(t.tax_amount, {"fieldtype":"Currency"}, doc=doc) }}</td></tr>
+    {% endif %}{% endfor %}
+    <tr><td style="text-align:right;"><strong>Grand Total</strong></td>
+        <td style="text-align:right;"><strong>{{ frappe.format(doc.grand_total, {"fieldtype":"Currency"}, doc=doc) }}</strong></td></tr>
+    {%- if doc.rounded_total and doc.rounded_total != doc.grand_total %}
+    <tr><td style="text-align:right;">Rounded Total</td>
+        <td style="text-align:right;"><strong>{{ frappe.format(doc.rounded_total, {"fieldtype":"Currency"}, doc=doc) }}</strong></td></tr>
+    {%- endif %}
+  </table>
+  <div style="margin-bottom:6px;">Amount in words: <strong>{{ doc.in_words or "" }}</strong></div>
+
+  {%- if doc.payment_schedule %}
+  <table class="table table-bordered" style="font-size:10px;margin-bottom:6px;">
+    <thead><tr><th>Payment Term</th><th>Due Date</th><th class="text-right">Portion</th><th class="text-right">Amount</th></tr></thead>
+    <tbody>
+    {%- for p in doc.payment_schedule %}
+      <tr>
+        <td>{{ p.payment_term or p.description or ("Full payment" if (p.invoice_portion or 0) >= 100 else "Instalment " ~ loop.index) }}</td>
+        <td>{% if p.due_date %}{{ frappe.format(p.due_date, {"fieldtype":"Date"}) }}{% endif %}</td>
+        <td class="text-right">{{ p.invoice_portion or 0 }}%</td>
+        <td class="text-right">{{ frappe.format(p.payment_amount, {"fieldtype":"Currency"}, doc=doc) }}</td>
+      </tr>
+    {%- endfor %}
+    </tbody>
+  </table>
+  {%- elif doc.payment_terms_template %}
+  <div style="margin-bottom:6px;">Payment Terms: <strong>{{ doc.payment_terms_template }}</strong></div>
+  {%- endif %}
+
+  {%- if doc.custom_delivery_instructions %}
+  <div style="border:1px solid #F39C12;background:#FFF8E1;border-radius:6px;padding:6px 10px;margin-bottom:6px;">
+    <strong>Delivery Instructions:</strong> {{ doc.custom_delivery_instructions }}
+  </div>
+  {%- endif %}
+
+  {%- if doc.terms %}
+  <div style="margin-top:8px;"><u>Terms &amp; Conditions</u><div style="font-size:10px;">{{ doc.terms | safe }}</div></div>
+  {%- endif %}
+
+  <table style="width:100%;margin-top:24px;"><tr>
+    <td style="font-size:10px;color:#555;">This is a computer-generated sales order.</td>
+    <td style="text-align:right;">for <strong>{{ _company.company_name }}</strong><br><br>Authorised Signatory</td>
+  </tr></table>
+</div>
+""".strip()
+
+
+def _ensure_sales_order_print_format():
+    """Create (or refresh on change) the branded 'Klemco Sales Order' print format. Like the
+    Quotation / Tax Invoice seeders, the html is re-applied whenever it drifts from the template
+    above, so UI edits to the format are overwritten on the next migrate — change it here."""
+    name = KLEMCO_SALES_ORDER_PRINT_FORMAT
+    if frappe.db.exists("Print Format", name):
+        pf = frappe.get_doc("Print Format", name)
+        if (pf.html or "") != KLEMCO_SALES_ORDER_HTML:
+            pf.html = KLEMCO_SALES_ORDER_HTML
+            pf.save(ignore_permissions=True)
+        return
+    frappe.get_doc({
+        "doctype": "Print Format",
+        "name": name,
+        "doc_type": "Sales Order",
+        "module": "Customer Service",
+        "standard": "No",
+        "custom_format": 1,
+        "print_format_type": "Jinja",
+        "html": KLEMCO_SALES_ORDER_HTML,
     }).insert(ignore_permissions=True)
 
 

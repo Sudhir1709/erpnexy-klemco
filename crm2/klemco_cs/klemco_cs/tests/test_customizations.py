@@ -44,3 +44,42 @@ class TestCustomizations(FrappeTestCase):
     def test_roles_present(self):
         for role in ROLES:
             self.assertTrue(frappe.db.exists("Role", role), msg=f"missing role {role}")
+
+    # ── Klemco Sales Order print format + suppressed "Enter Company Details" prompt ──
+    def test_sales_order_print_format_exists(self):
+        pf = frappe.db.get_value(
+            "Print Format", "Klemco Sales Order",
+            ["doc_type", "print_format_type", "custom_format"], as_dict=True,
+        )
+        self.assertIsNotNone(pf, "Klemco Sales Order print format not seeded")
+        self.assertEqual(pf.doc_type, "Sales Order")
+        self.assertEqual(pf.print_format_type, "Jinja")
+        self.assertEqual(pf.custom_format, 1)
+
+    def test_sales_order_default_print_format(self):
+        frappe.clear_cache(doctype="Sales Order")
+        self.assertEqual(frappe.get_meta("Sales Order").default_print_format, "Klemco Sales Order")
+
+    def test_company_details_prompt_suppressed(self):
+        from klemco_cs.printing import get_missing_company_details
+
+        target = frappe.override_whitelisted_method(
+            "erpnext.controllers.accounts_controller.get_missing_company_details"
+        )
+        self.assertEqual(target, "klemco_cs.printing.get_missing_company_details")
+        frappe.is_whitelisted(frappe.get_attr(target))  # must not raise
+        self.assertIsNone(get_missing_company_details("Sales Order", "SO-DOES-NOT-MATTER"))
+
+    def test_sales_order_print_format_renders(self):
+        from frappe.www.printview import get_html_and_style
+
+        name = frappe.db.get_value("Sales Order", {"docstatus": ["<", 2]}, "name")
+        if not name:
+            self.skipTest("no Sales Order in site to render")
+        html = get_html_and_style(
+            doc="Sales Order", name=name, print_format="Klemco Sales Order", no_letterhead=1
+        )["html"]
+        self.assertIn("SALES ORDER", html)
+        self.assertIn(name, html)
+        self.assertNotIn("no such element", html)   # DebugUndefined leak from an unguarded field
+        self.assertNotIn("letter-head", html)       # custom Jinja formats are self-contained
