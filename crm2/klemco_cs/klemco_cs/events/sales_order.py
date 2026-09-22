@@ -463,3 +463,144 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
     ) > 0:
         frappe.throw(_("This Sales Order has been billed — its item lines are frozen and can't be changed."))
     return _erp_update(parent_doctype, trans_items, parent_doctype_name, child_docname)
+
+
+# ── Change of plant (source warehouse) on a submitted order ─────────────────────────────────────
+# Sales Order.set_warehouse and Sales Order Item.warehouse are allow_on_submit (property setters in
+# customizations.py) so CS can move an undelivered order to another plant before the Delivery Note
+# exists — pick the warehouse, click Update. These hooks keep ERPNext's stock figures honest:
+#   * lines already delivered / picked / on a draft Delivery Note or Pick List, and product bundles,
+#     can't move (the Delivery Note is the place to change those);
+#   * Stock Reservation Entries are cancelled at the old plant and re-created at the new one
+#     (the app auto-reserves on submit — see _ensure_stock_allocation);
+#   * Bin.reserved_qty is recomputed for the old plant (ERPNext only recomputes the current one).
+# ERPNext's own before/on_update_after_submit run first; Frappe fills get_doc_before_save() on the
+# Update path and has already written the child rows when on_update_after_submit runs.
+
+def _doc_before_save(doc):
+    getter = getattr(doc, "get_doc_before_save", None)
+    return getter() if callable(getter) else None
+
+
+def _warehouse_changes(doc):
+    """[(row, old_warehouse, new_warehouse)] for item rows whose warehouse changed in this Update."""
+    before = _doc_before_save(doc)
+    if not before:
+        return []
+    old_rows = {r.name: r for r in (before.get("items") or [])}
+    changes = []
+    for row in doc.get("items") or []:
+        old = old_rows.get(row.name)
+        if old is None:
+            continue   # added by "Update Items" — takes the new set_warehouse by itself
+        if (old.get("warehouse") or "") != (row.get("warehouse") or ""):
+            changes.append((row, old.get("warehouse"), row.get("warehouse")))
+    return changes
+
+
+def _header_warehouse_changed(doc):
+    before = _doc_before_save(doc)
+    return bool(before) and (before.get("set_warehouse") or "") != (doc.get("set_warehouse") or "")
+
+
+def _validate_plant(warehouse, company):
+    """The new plant must be a real, enabled, non-group warehouse of this company."""
+    from erpnext.stock.utils import (
+        is_group_warehouse, validate_disabled_warehouse, validate_warehouse_company,
+    )
+    if not frappe.db.exists("Warehouse", warehouse):
+        frappe.throw(_("Warehouse {0} does not exist.").format(frappe.bold(warehouse)))
+    is_group_warehouse(warehouse)
+    validate_disabled_warehouse(warehouse)
+    validate_warehouse_company(warehouse, company)
+
+
+def before_update_after_submit(doc, method=None):
+    """Block a plant change on lines that already left (or are leaving) the old plant."""
+    changes = _warehouse_changes(doc)
+    header_changed = _header_warehouse_changed(doc)
+    if header_changed and not changes:
+        if not [r for r in doc.get("items") or [] if flt(r.qty) > flt(r.get("delivered_qty"))]:
+            frappe.throw(_("All lines of this order are already delivered — the plant can't be changed any more."))
+    if header_changed and doc.get("set_warehouse"):
+        _validate_plant(doc.set_warehouse, doc.company)
+
+    kept = []
+    for row, old_wh, new_wh in changes:
+        if row.get("delivered_by_supplier"):
+            continue
+        label = _("Row #{0} ({1})").format(row.idx, row.item_code)
+        if flt(row.get("delivered_qty")):
+            frappe.throw(_("{0} is already (partly) delivered — its plant can't change. Deliver the "
+                           "balance from the Delivery Note's warehouse instead.").format(label))
+        if flt(row.get("picked_qty")):
+            frappe.throw(_("{0} is already picked — its plant can't change.").format(label))
+        dn = frappe.db.get_value("Delivery Note Item", {"so_detail": row.name, "docstatus": ["<", 2]}, "parent")
+        if dn:
+            frappe.throw(_("{0} is already on Delivery Note {1} — change the warehouse on that "
+                           "Delivery Note instead.").format(label, frappe.bold(dn)))
+        pl = frappe.db.get_value("Pick List Item", {"sales_order_item": row.name, "docstatus": ["<", 2]}, "parent")
+        if pl:
+            frappe.throw(_("{0} is on Pick List {1} — cancel it before changing the plant.").format(label, frappe.bold(pl)))
+        if hasattr(doc, "has_product_bundle") and doc.has_product_bundle(row.item_code):
+            frappe.throw(_("{0} is a product bundle — its plant can't be changed after submit.").format(label))
+        if not new_wh:
+            frappe.throw(_("{0}: pick a warehouse (plant).").format(label))
+        _validate_plant(new_wh, doc.company)
+        kept.append((row.name, old_wh, new_wh))
+    doc.flags.klemco_wh_changes = kept
+
+
+def on_update_after_submit(doc, method=None):
+    """Move reservations and Bin figures along with the changed plant(s)."""
+    changes = doc.flags.get("klemco_wh_changes") or []
+    if not changes:
+        return
+    from erpnext.stock.doctype.stock_reservation_entry.stock_reservation_entry import (
+        get_stock_reservation_entries_for_voucher,
+    )
+    from erpnext.stock.stock_balance import get_reserved_qty, update_bin_qty
+
+    reservation_on = bool(doc.get("reserve_stock")) and bool(
+        frappe.db.get_single_value("Stock Settings", "enable_stock_reservation")
+    )
+
+    # 1. Release the old plant: cancel this row's reservations, recompute its Bin.reserved_qty.
+    for row_name, old_wh, _new_wh in changes:
+        row = doc.getone("items", {"name": row_name})
+        if row is None:
+            continue
+        sres = get_stock_reservation_entries_for_voucher(
+            "Sales Order", doc.name, voucher_detail_no=row.name, fields=["name"]
+        )
+        if sres:
+            doc.cancel_stock_reservation_entries(sre_list=[s.name for s in sres], notify=False)
+        if old_wh and frappe.db.exists("Bin", {"item_code": row.item_code, "warehouse": old_wh}):
+            update_bin_qty(row.item_code, old_wh, {"reserved_qty": get_reserved_qty(row.item_code, old_wh)})
+    # 2. Reserve (order-based) at the new plant.
+    doc.update_reserved_qty(so_item_rows=[c[0] for c in changes])
+
+    # 3. Re-create the stock reservation at the new plant (partial reservation allowed; ERPNext
+    #    reports "stock not available to reserve" itself when the plant is empty).
+    for row_name, old_wh, new_wh in changes:
+        row = doc.getone("items", {"name": row_name})
+        if row is None:
+            continue
+        reserved = 0.0
+        qty_to_reserve = flt(row.qty) - flt(row.get("delivered_qty"))
+        if (reservation_on and row.get("reserve_stock") and qty_to_reserve > 0
+                and frappe.get_cached_value("Item", row.item_code, "is_stock_item")):
+            doc.create_stock_reservation_entries(
+                items_details=[{"sales_order_item": row.name, "warehouse": new_wh, "qty_to_reserve": qty_to_reserve}],
+                notify=False,
+            )
+            reserved = flt(frappe.db.get_value("Sales Order Item", row.name, "stock_reserved_qty"))
+            row.stock_reserved_qty = reserved
+        if reserved:
+            msg = _("Row #{0} ({1}) moved from {2} to {3} — {4} {5} reserved at {3}.").format(
+                row.idx, row.item_code, old_wh or "-", new_wh, flt(reserved), row.get("stock_uom") or "")
+        else:
+            msg = _("Row #{0} ({1}) moved from {2} to {3} — nothing reserved at {3} yet (no stock "
+                    "there; reserve once stock arrives).").format(row.idx, row.item_code, old_wh or "-", new_wh)
+        frappe.msgprint(msg, alert=True, indicator="green" if reserved else "orange")
+        doc.add_comment("Comment", msg)

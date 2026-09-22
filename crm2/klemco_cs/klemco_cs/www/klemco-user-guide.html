@@ -631,7 +631,9 @@ and BOQ carry forward when you create the Sales Order.</p>
 <div class="tip"><strong>Good to know:</strong> the <strong>Customer's PO</strong> shows as a column on the Sales
 Order list. Once an order has been <strong>billed</strong>, its item lines are <strong>locked</strong> (the
 "Update Items" button disappears). From a submitted order use <strong>Create</strong> for a Delivery Note / Sales
-Invoice / Plant Order — items pre-fill automatically.</div>
+Invoice / Plant Order — items pre-fill automatically. Need to ship from another <strong>plant</strong>? On the
+submitted order pick a different <strong>Set Source Warehouse</strong> (or a line&rsquo;s Warehouse) and click
+<strong>Update</strong> &mdash; allowed until a line is delivered or picked; the stock reservation moves with it.</div>
 
 <h3 id="selling-discount">12.4 Discounts &amp; the approval gate</h3>
 <p>Each customer type has a maximum discount, set in the <strong>Discount Matrix</strong> (Configuration group).
@@ -790,6 +792,9 @@ the tax invoice is complete. (The "Klemco India (Demo)" company has no GSTIN and
 <h3>Can I bill items from different plants using the same Sales Order?</h3>
 <p><strong>Yes.</strong> One Sales Order can carry lines that ship from <strong>different warehouses/plants</strong> (each line has its own warehouse). From that single order you create <strong>multiple Delivery Notes</strong> (one per plant/warehouse) and <strong>multiple Sales Invoices</strong> &mdash; all linked back to the one Sales Order, which tracks delivered vs billed quantity per line.</p>
 <div class="warn"><strong>One company at a time:</strong> a single Sales Order / Delivery Note / Invoice belongs to <strong>one company</strong>. This works across <em>warehouses within the same company</em> (Klemco India has Stores, Finished Goods, Amritsar, Thane, Work in Progress, &hellip;). If a &ldquo;plant&rdquo; is a separate legal company, it needs its own Sales Order.</div>
+<p>Changed your mind after submitting? Pick the other plant in <strong>Set Source Warehouse</strong> and click
+<strong>Update</strong> (until a line is delivered or picked). Plant Orders inward into <em>Finished Goods - KI</em>, so a
+plant that has no stock yet needs a <strong>Material Transfer</strong> first, or the Delivery Note will refuse to save.</p>
 
 <a class="backtop" href="#top">&uarr; Back to top</a>
 

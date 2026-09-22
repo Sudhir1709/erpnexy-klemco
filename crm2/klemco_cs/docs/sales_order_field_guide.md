@@ -48,7 +48,7 @@ Each field is tagged:
 |---|---|---|
 | **Items table** | You fill | The heart of the order — each line: **Item Code**, **Delivery Date**, **Quantity**, Rate. Add via *Add row* / *Add multiple*, or *Get Items From* a Quotation. |
 | **Scan Barcode** | Optional | Add items by scanning instead of typing the code. |
-| **Set Source Warehouse** | You fill | The warehouse the goods ship **from**. Setting it here applies it to **every item row**. Drives the stock check, reservation, the Delivery Note source, and the Klemco low-stock/backorder warning. For finished goods, pick **Finished Goods**. |
+| **Set Source Warehouse** | You fill | The warehouse the goods ship **from**. Setting it here applies it to **every item row**. Drives the stock check, reservation, the Delivery Note source, and the Klemco low-stock/backorder warning. For finished goods, pick **Finished Goods**. Can be changed on a **submitted** order until a line is delivered/picked — pick the new plant (or a line's Warehouse) and click **Update**; the stock reservation moves with it. |
 | **Reserve Stock** | Optional | Earmark on-hand stock for this order (needs stock reservation enabled). Off for normal orders. |
 
 ### Taxes

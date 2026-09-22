@@ -47,9 +47,11 @@ frappe.ui.form.on('Sales Order', {
         }
 
         _colour_processed_rows(frm);
+        _plant_change_hint(frm);
     },
 
     onload(frm) {
+        _plant_change_setup(frm);
         _seed_mandate_docs(frm);
         _bound_delivery_dates(frm);
         _toggle_3pl_note(frm);
@@ -78,6 +80,37 @@ function _pf_note(frm) {
     if (frm.doc.cs_add_pf) {
         frappe.show_alert({message: __('Packaging & Forwarding ({0}%) will be added before tax when you Save.',
             [frm.doc.cs_pf_rate || 1.5]), indicator: 'blue'}, 5);
+    }
+}
+
+// Change of plant on a submitted order. set_warehouse / item warehouse are allow_on_submit, so a
+// submitted order can be moved to another plant until a line is delivered (server validates and
+// moves the stock reservation). ERPNext's own set_warehouse handler (frm.cscript.set_warehouse)
+// would overwrite every row — wrap it so delivered / picked rows keep their warehouse. frappe.ui.form.on
+// handlers run BEFORE the cscript method, hence the wrapper instead of a post-handler.
+function _plant_change_setup(frm) {
+    if (frm._klemco_wh_patched || !frm.cscript || !frm.cscript.set_warehouse) return;
+    frm._klemco_wh_patched = true;
+    const orig = frm.cscript.set_warehouse;
+    frm.cscript.set_warehouse = function () {
+        if (frm.doc.docstatus !== 1) return orig.apply(this, arguments);
+        const wh = frm.doc.set_warehouse;
+        if (!wh) return;
+        (frm.doc.items || []).forEach((row) => {
+            if (flt(row.delivered_qty) || flt(row.picked_qty) || row.warehouse === wh) return;
+            frappe.model.set_value(row.doctype, row.name, 'warehouse', wh);
+        });
+        frappe.show_alert({message: __('Click Update to move the undelivered lines to {0}.', [wh]), indicator: 'blue'}, 6);
+    };
+}
+
+function _plant_change_hint(frm) {
+    if (frm.doc.docstatus !== 1) return;
+    const open = (frm.doc.items || []).some((r) => flt(r.qty) > flt(r.delivered_qty) && !flt(r.picked_qty));
+    if (open && flt(frm.doc.per_delivered) < 100) {
+        frm.dashboard.add_comment(
+            __('Plant can still be changed: pick another Set Source Warehouse (or a line\'s Warehouse) and click Update.'),
+            'blue', true);
     }
 }
 

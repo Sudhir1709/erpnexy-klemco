@@ -76,6 +76,9 @@ doc_events = {
         'before_submit': 'klemco_cs.events.sales_order.before_submit',
         'on_submit': 'klemco_cs.events.sales_order.on_submit',
         'on_update': 'klemco_cs.notifications.notify_approval_transitions',
+        # Change of plant (source warehouse) on a submitted, undelivered order — see events.
+        'before_update_after_submit': 'klemco_cs.events.sales_order.before_update_after_submit',
+        'on_update_after_submit': 'klemco_cs.events.sales_order.on_update_after_submit',
     },
     'Delivery Note': {
         'validate': 'klemco_cs.events.delivery_note.validate',

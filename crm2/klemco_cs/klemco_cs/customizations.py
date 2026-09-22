@@ -692,6 +692,13 @@ PROPERTY_SETTERS = [
         "value": "Klemco Sales Order",
         "property_type": "Data",
     },
+    # Change of plant after submit: the source warehouse (header + item rows) stays editable on a
+    # submitted Sales Order until a line is delivered/picked — events/sales_order.py validates the
+    # change and moves stock reservations / Bin figures with it. (Packed Item is left locked.)
+    {"doctype_or_field": "Field", "doctype": "Sales Order", "fieldname": "set_warehouse",
+     "property": "allow_on_submit", "value": "1", "property_type": "Check"},
+    {"doctype_or_field": "Field", "doctype": "Sales Order Item", "fieldname": "warehouse",
+     "property": "allow_on_submit", "value": "1", "property_type": "Check"},
     # B2B default: new Addresses default to Registered Regular. India Compliance still derives the
     # real category from the GSTIN on save — it stays Registered when a GSTIN is entered, and reverts
     # to Unregistered (India) / Overseas gracefully when there's none (no validation error).

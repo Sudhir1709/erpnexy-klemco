@@ -93,3 +93,10 @@ class TestCustomizations(FrappeTestCase):
              "Technical Drawing / Specification", "Other"],
         )
         self.assertEqual(meta.get_field("file").reqd, 0, "placeholder rows must be saveable without a file")
+
+    # ── Change of plant on a submitted Sales Order: warehouse fields editable after submit ──
+    def test_warehouse_editable_after_submit(self):
+        frappe.clear_cache(doctype="Sales Order")
+        frappe.clear_cache(doctype="Sales Order Item")
+        self.assertEqual(frappe.get_meta("Sales Order").get_field("set_warehouse").allow_on_submit, 1)
+        self.assertEqual(frappe.get_meta("Sales Order Item").get_field("warehouse").allow_on_submit, 1)
