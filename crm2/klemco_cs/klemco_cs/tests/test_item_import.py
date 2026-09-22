@@ -37,6 +37,26 @@ class TestItemImport(FrappeTestCase):
         self.assertRaises(frappe.ValidationError, parse_items_file, "/private/files/items.xls")
         self.assertRaises(frappe.ValidationError, parse_items_file, "/private/files/items.pdf")
 
+    def test_download_template(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        from klemco_cs.item_import import download_template
+
+        for doctype, expected in (
+            ("Quotation", ["Item Code", "Qty", "Rate", "Warehouse"]),
+            ("Sales Order", ["Item Code", "Qty", "Rate", "Warehouse", "Delivery Date"]),
+        ):
+            frappe.response.pop("filecontent", None)
+            download_template(doctype)
+            self.assertTrue(frappe.response["filename"].endswith(".xlsx"))
+            self.assertEqual(frappe.response["type"], "binary")
+            wb = load_workbook(BytesIO(frappe.response["filecontent"]))
+            self.assertEqual(wb.sheetnames, ["Items", "How to"])
+            header = [c.value for c in next(wb["Items"].iter_rows())]
+            self.assertEqual(header, expected, doctype)
+            self.assertEqual(wb["Items"].max_row, 1, "template must have no data rows")
+        self.assertRaises(frappe.ValidationError, download_template, "Item")
+
     def test_requires_read_permission_on_the_file(self):
         f = self._file("klemco_test_private.csv", b"Item Code,Qty\nKL-001,1\n")
         frappe.set_user("Guest")

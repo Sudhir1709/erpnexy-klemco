@@ -610,8 +610,8 @@ SITC / Project</strong> and you get:</p>
   <li><strong>BOQ File</strong> — attach the bill of quantities (mandatory for SITC).</li>
   <li>A single lump-sum line <strong>"SITC Works (as per BOQ)"</strong> is added automatically — just type the amount.</li>
 </ul>
-<p>Many lines? <strong>Get Items From &rarr; Import Items</strong> (or the items grid&rsquo;s <strong>Upload</strong> button)
-loads an Excel / CSV list of <em>Item Code, Qty</em> into the quotation &mdash; exactly as on a Sales Order (see the FAQ).</p>
+<p>Many lines? Click the items grid&rsquo;s <strong>Download</strong> for the Excel template, fill in <em>Item Code, Qty</em>
+and <strong>Upload</strong> it (or <strong>Get Items From &rarr; Import Items</strong>) &mdash; exactly as on a Sales Order (see the FAQ).</p>
 <p>Click <strong>Proforma Invoice</strong> on a Quotation to print a non-tax proforma. Both the Project Type, Scope
 and BOQ carry forward when you create the Sales Order.</p>
 
@@ -621,8 +621,8 @@ and BOQ carry forward when you create the Sales Order.</p>
   <li><strong>Order Type</strong> — <em>One-Shot</em> (deliver once) or <em>Open (Phased Delivery)</em> (multiple
       deliveries; each line needs its own Delivery Date).</li>
   <li>Add items. Fast options: <strong>Import Items</strong> (upload a simple <em>Item Code, Qty</em> Excel or CSV
-      file) under the <strong>Get Items From</strong> menu &mdash; the items grid&rsquo;s <strong>Upload</strong> button does
-      the same &mdash; or type them in.</li>
+      file) under the <strong>Get Items From</strong> menu &mdash; the items grid&rsquo;s <strong>Download</strong> gives you
+      the Excel template and <strong>Upload</strong> loads it &mdash; or type them in.</li>
   <li>Set a per-line <strong>Discount %</strong> right in the items grid (editable for Regular/COD customers).</li>
   <li>Attach paperwork — the <strong>Documents</strong> menu &rarr; <strong>Upload Documents</strong> lets you add
       several files at once (PO copy, test certificates &hellip;).</li>
@@ -776,9 +776,10 @@ the tax invoice is complete. (The "Klemco India (Demo)" company has no GSTIN and
 <h3>Can I import a list of items and quantities from Excel into a Quotation or Sales Order?</h3>
 <p><strong>Yes</strong> &mdash; Excel (<em>.xlsx</em>) or CSV, on both documents:</p>
 <ol class="steps">
-  <li>Prepare a sheet with a header row: <strong>Item Code</strong> (required), <strong>Qty</strong>, and optionally
-      <strong>Rate</strong>, <strong>Warehouse</strong>, <strong>Delivery Date</strong> (Sales Order only). The header may sit
-      on any row; extra columns are ignored. The template from the grid&rsquo;s <strong>Download</strong> button works too.</li>
+  <li>Click the items grid&rsquo;s <strong>Download</strong> button to get the Excel template (sheet <em>Items</em> with the
+      header, sheet <em>How to</em> with the rules) &mdash; or use your own sheet with a header row: <strong>Item Code</strong>
+      (required), <strong>Qty</strong>, and optionally <strong>Rate</strong>, <strong>Warehouse</strong>,
+      <strong>Delivery Date</strong> (Sales Order only). The header may sit on any row; extra columns are ignored.</li>
   <li>Open the Quotation / Sales Order and click <strong>Get Items From &rarr; Import Items</strong>, or the items
       grid&rsquo;s <strong>Upload</strong> button &mdash; pick the file.</li>
   <li>The rows are added to the grid (a blank first line is removed). <strong>Save</strong> &mdash; item names and

@@ -10,7 +10,10 @@
 //   1. adds "Get Items From → Import Items";
 //   2. re-routes the items grid's stock "Upload" button to the same importer. The stock button only
 //      accepts .csv and needs Frappe's exact 7-row Download template — users who click it with an
-//      Excel file got "skipped because of invalid file type".
+//      Excel file got "skipped because of invalid file type";
+//   3. re-routes the grid's "Download" button to a simple Excel template (Item Code / Qty / Rate /
+//      Warehouse [/ Delivery Date] + a "How to" sheet) served by klemco_cs.item_import.download_template,
+//      instead of Frappe's 7-row CSV bulk-edit template (which Upload still accepts).
 // The file is uploaded as a File record, parsed server-side (klemco_cs.item_import.parse_items_file)
 // and the rows are appended to `items`: Item Code (required), Qty (default 1), optional Rate /
 // Warehouse / Delivery Date (only fields the child doctype actually has are set). The header may
@@ -58,10 +61,24 @@
         });
     }
 
+    function bind_grid_download(frm) {
+        const grid = frm.fields_dict.items && frm.fields_dict.items.grid;
+        if (!grid || !grid.wrapper) return;
+        const $btn = $(grid.wrapper).find('.grid-download');
+        if (!$btn.length || $btn.data('klemcoImport')) return;
+        $btn.data('klemcoImport', 1).off('click').on('click', (e) => {
+            e.preventDefault();
+            window.open('/api/method/klemco_cs.item_import.download_template?doctype='
+                + encodeURIComponent(frm.doctype), '_blank');
+            return false;
+        });
+    }
+
     function setup(frm) {
         if (frm.doc.docstatus !== 0) return;
         add_button(frm);
         bind_grid_upload(frm);
+        bind_grid_download(frm);
     }
 
     // Normalise a spreadsheet date cell to YYYY-MM-DD: ISO datetime (real Excel date) → date part;
@@ -145,8 +162,11 @@
         }
 
         const toast = () => frappe.show_alert({
-            message: __('Imported {0} item(s){1}.',
-                [parsed.length, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : '']),
+            message: parsed.length
+                ? __('Imported {0} item(s){1}.',
+                    [parsed.length, skipped ? __(' ({0} row(s) skipped — no item code)', [skipped]) : ''])
+                : __("No item rows found under the 'Item Code' header — check the file{0}.",
+                    [skipped ? __(' ({0} row(s) had no item code)', [skipped]) : '']),
             indicator: parsed.length ? 'green' : 'orange',
         }, 7);
         if (!parsed.length) { toast(); return; }
