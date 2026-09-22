@@ -153,10 +153,17 @@ The Customer-Service workflow — order type, approvals, credit & dispatch docum
 | **Released By** | The Finance user who cleared the hold. |
 
 ### Mandate Documents
-| Field | Purpose |
+One grid (**Documents**) with a row per customer file. A new order starts with four rows already typed —
+attach each file when it arrives; a row without a file is still awaited. Add rows for anything else
+(Type *Other* + Remarks), or use **Documents → Upload Documents** to attach several files at once.
+
+| Type | Purpose |
 |---|---|
 | **Customer PO Copy** | Scanned/digital PO from the customer (BR-SO-02). |
-| **Test Certificates** | Quality/test certificates. Supports multiple files or a ZIP. |
+| **Client Order Confirmation** | The customer's written confirmation / SKU mapping. Auto-attached to the Delivery Note when the DN is created (FR-SO-15 / BR-SO-08). |
+| **Test Certificate** | Quality/test certificates (one row per file). |
+| **Technical Drawing / Specification** | Drawings or specifications mandated by the customer. |
+| **Other** | Anything else — say what it is in Remarks. |
 
 ### Dispatch & Tracking
 | Field | Purpose |
@@ -164,7 +171,7 @@ The Customer-Service workflow — order type, approvals, credit & dispatch docum
 | **Docket / LR #** | The transporter's docket / lorry-receipt number. |
 | **Tracking URL** | Link to the courier's tracking page. |
 | **Proof of Delivery (POD)** | Photo, signature, or GPS confirmation of delivery (FR-4-09). |
-| **Client Order Confirmation** | A **Word document (.docx/.doc only)** from the customer mapping their SKUs to Klemco SKUs — the warehouse needs it during packing. On save it's **auto-attached to the linked Delivery Note** (FR-SO-15 / BR-SO-08). |
+| **Client Order Confirmation** | Captured as a row in **Mandate Documents** (above); the warehouse needs it during packing, so it is **auto-attached to the Delivery Note** when the DN is created (FR-SO-15 / BR-SO-08). |
 
 ---
 

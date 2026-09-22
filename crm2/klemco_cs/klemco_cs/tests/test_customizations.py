@@ -83,3 +83,13 @@ class TestCustomizations(FrappeTestCase):
         self.assertIn(name, html)
         self.assertNotIn("no such element", html)   # DebugUndefined leak from an unguarded field
         self.assertNotIn("letter-head", html)       # custom Jinja formats are self-contained
+
+    # ── Mandate Documents: standard types pre-filled on a new order, file optional ──
+    def test_mandate_document_types(self):
+        meta = frappe.get_meta("CS Mandate Document")
+        self.assertEqual(
+            meta.get_field("document_type").options.split("\n"),
+            ["Customer PO Copy", "Client Order Confirmation", "Test Certificate",
+             "Technical Drawing / Specification", "Other"],
+        )
+        self.assertEqual(meta.get_field("file").reqd, 0, "placeholder rows must be saveable without a file")

@@ -598,7 +598,10 @@
 
   <section class="sec" id="mandate-documents">
     <h3><a class="anchor" href="#mandate-documents">Mandate Documents</a></h3>
-    <p class="purpose">Compliance documents that must accompany the order.</p>
+    <p class="purpose">Compliance documents that must accompany the order &mdash; one <b>Documents</b> grid, a row per file.
+    A new order starts with the four standard rows already typed; attach each file when it arrives (a row without a
+    file is still awaited). Add rows for anything else (Type <em>Other</em> + Remarks), or use
+    <b>Documents &rarr; Upload Documents</b> to attach several files at once.</p>
     <div class="fields">
       <div class="field">
         <div class="fmeta"><span class="fname">Customer PO Copy</span><span class="tag tag-fill">You fill</span></div>
@@ -606,8 +609,17 @@
         the order can proceed. <span class="ref">BR-SO-02</span></p>
       </div>
       <div class="field">
-        <div class="fmeta"><span class="fname">Test Certificates</span><span class="tag tag-fill">You fill</span></div>
-        <p class="fdesc">Quality / test certificates for the goods. Supports multiple files or a ZIP.</p>
+        <div class="fmeta"><span class="fname">Client Order Confirmation</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">The customer's written confirmation / SKU mapping. Auto-attached to the Delivery Note when the
+        DN is created. <span class="ref">FR-SO-15 &middot; BR-SO-08</span></p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Test Certificate</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Quality / test certificates for the goods &mdash; one row per file.</p>
+      </div>
+      <div class="field">
+        <div class="fmeta"><span class="fname">Technical Drawing / Specification</span><span class="tag tag-fill">You fill</span></div>
+        <p class="fdesc">Drawings or specifications the customer mandates for this order.</p>
       </div>
     </div>
   </section>

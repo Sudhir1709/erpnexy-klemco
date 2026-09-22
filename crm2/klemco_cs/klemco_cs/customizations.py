@@ -140,9 +140,11 @@ CUSTOM_FIELDS = {
             "options": "CS Mandate Document",
             "insert_after": "cs_docs_section",
             "allow_on_submit": 1,
-            "description": "Upload all customer-mandated documents (PO copies, test certificates, "
-                           "client order confirmation …) — add a row per file, or use the "
-                           "'Upload Documents' button to attach several at once.",
+            "description": "Rows for the standard documents (Customer PO Copy, Client Order "
+                           "Confirmation, Test Certificate, Technical Drawing / Specification) are "
+                           "added automatically — attach each file when it arrives (a row without a "
+                           "file is still awaited). Add rows for anything else (Type 'Other' + "
+                           "Remarks), or use 'Upload Documents' to attach several at once.",
         },
         {
             "fieldname": "custom_preferred_3pl",

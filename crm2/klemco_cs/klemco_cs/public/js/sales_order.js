@@ -50,6 +50,7 @@ frappe.ui.form.on('Sales Order', {
     },
 
     onload(frm) {
+        _seed_mandate_docs(frm);
         _bound_delivery_dates(frm);
         _toggle_3pl_note(frm);
         _connections_prefill(frm);
@@ -80,16 +81,37 @@ function _pf_note(frm) {
     }
 }
 
-// Mandate Documents — "Upload Documents" button: pick a Type once, then select several files at
-// once; each uploaded file is added as a row in the cs_mandate_documents grid. (Manual "Add Row"
-// in the grid still works for one-offs.)
+// Mandate Documents — the standard document types are the child doctype's Type options minus
+// "Other", so the list lives in one place (cs_mandate_document.json).
+function _mandate_doc_types(frm) {
+    const df = frappe.meta.get_docfield('CS Mandate Document', 'document_type', frm.doc.name);
+    return ((df && df.options) || '').split('\n').map((s) => s.trim()).filter(Boolean);
+}
+
+// A new order starts with one row per standard type (File empty = still awaited); users attach the
+// files as they arrive and add rows for anything else. Orders that already carry rows (duplicates,
+// re-opened drafts) are left alone.
+function _seed_mandate_docs(frm) {
+    if (!frm.is_new() || (frm.doc.cs_mandate_documents || []).length) return;
+    _mandate_doc_types(frm).filter((t) => t !== 'Other').forEach((document_type) => {
+        frm.add_child('cs_mandate_documents', { document_type });
+    });
+    frm.refresh_field('cs_mandate_documents');
+}
+
+// "Upload Documents" button: pick a Type once, then select several files at once. The first file
+// fills that type's awaiting (file-less) row; further files add rows. (Manual "Add Row" still works.)
 function _mandate_docs_ui(frm) {
+    // Files are attached to the order, so it must exist first (uploading against an unsaved
+    // temporary name fails server-side). On a new order the typed rows are already there.
+    if (frm.is_new()) return;
     frm.add_custom_button(__('Upload Documents'), () => {
+        const types = _mandate_doc_types(frm);
         frappe.prompt(
             [{
                 fieldname: 'document_type', label: __('Document Type'), fieldtype: 'Select', reqd: 1,
-                options: ['Customer PO Copy', 'Test Certificate', 'Client Order Confirmation', 'Other'].join('\n'),
-                default: 'Customer PO Copy',
+                options: types.join('\n'),
+                default: types[0],
             }],
             ({ document_type }) => {
                 new frappe.ui.FileUploader({
@@ -98,9 +120,13 @@ function _mandate_docs_ui(frm) {
                     docname: frm.docname,
                     folder: 'Home/Attachments',
                     on_success(file_doc) {
-                        const row = frm.add_child('cs_mandate_documents', {
-                            document_type, file: file_doc.file_url,
-                        });
+                        const awaiting = (frm.doc.cs_mandate_documents || [])
+                            .find((r) => r.document_type === document_type && !r.file);
+                        if (awaiting) {
+                            frappe.model.set_value(awaiting.doctype, awaiting.name, 'file', file_doc.file_url);
+                        } else {
+                            frm.add_child('cs_mandate_documents', { document_type, file: file_doc.file_url });
+                        }
                         frm.refresh_field('cs_mandate_documents');
                         frm.dirty();
                     },
